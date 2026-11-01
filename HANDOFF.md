@@ -31,10 +31,9 @@ weights by 1/n; ties use an FNV hash of the id's std `Hash`; explain path has no
 method; 20 public kept functions have no test.
 
 ## State
-Step 0 in flight: PR `roadmap-handoff` (ROADMAP.md + this file). CI was already seeded (fmt, clippy, test x3 OS, doc,
-deny, advisory portfolio).
+Step 0 done (#1 merged, 0.0.1, main protected). Step 1 in flight: PR `provenance` (NOTICE, PROVENANCE.md, licenses/),
+version 0.0.2 provisional until the PM allocates at the gate.
 
 ## Next
-1. After the step-0 PR merges: `[ASK]` the PM to protect `main` requiring the CI checks.
-2. Step 1: provenance record (NOTICE/CREDITS, derived-file table), verified against the tarball. No other code.
-3. Step 2: contract note, options first, for the PM to read.
+1. Step 1 PR: on merge, rewrite State; then step 2.
+2. Step 2: contract note, options first, for the PM to read (no code before the PM has read it).

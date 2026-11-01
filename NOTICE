@@ -1,0 +1,22 @@
+SortAnt
+Copyright (c) 2026 Eric Evans
+Licensed under MIT OR Apache-2.0 (see LICENSE-MIT and LICENSE-APACHE).
+
+SortAnt is derived from, and will contain modified portions of, the following work:
+
+  rankops 0.3.0 - rank fusion and reranking
+  Copyright (c) 2025 Arc
+  https://github.com/arclabs561/rankops
+  Licensed under MIT OR Apache-2.0
+  Origin: crates.io tarball sha256 d68480df682831038007caed5f2efe3d1a738fe51bcd89c536d5f0f683fb5089
+          (equal to the crates.io checksum), git commit 2181e75369fb2d73869afb50bea3c8c137a41553
+
+The upstream MIT licence text, with its copyright line, is kept verbatim in licenses/rankops-LICENSE-MIT.
+Upstream's LICENSE-APACHE is the unfilled Apache-2.0 template (no copyright holder named); its terms are the standard
+Apache-2.0 terms in our LICENSE-APACHE.
+
+Statement of changes (Apache-2.0 section 4(b)): files derived from rankops are listed in PROVENANCE.md with what was
+changed in each. Every modified file also carries a header saying it was modified from rankops.
+
+Algorithms are credited to their authors in the doc comments of the code that implements them. Those credits are
+citations of ideas, not claims of copied code.
