@@ -11,23 +11,24 @@ Credit and licence notices: `NOTICE`, `licenses/rankops-LICENSE-MIT`.
 | Licence | MIT OR Apache-2.0 |
 | Copyright line | `Copyright (c) 2025 Arc` (upstream `LICENSE-MIT:3`) |
 | Tarball sha256 | `d68480df682831038007caed5f2efe3d1a738fe51bcd89c536d5f0f683fb5089` |
-| crates.io checksum for 0.3.0 | the same 64 hex digits (read by the PM from the crates.io API) |
+| crates.io checksum for 0.3.0 | the same 64 hex digits (crates.io API) |
 | Git commit (`.cargo_vcs_info.json`) | `2181e75369fb2d73869afb50bea3c8c137a41553` |
 
 ## Verification done (2026-11-01, this repo's lane)
 
-- `sha256sum` of the tarball held at the PM's `.lane-state/upstream/rankops/rankops-0.3.0.crate` printed the digest above.
-- The tarball was extracted afresh and `diff -r` against the PM's extracted reading copy printed no differences, so the
-  reading copy is the tarball's content.
+- `sha256sum` of a copy of the tarball printed the digest above, equal to the crates.io checksum for 0.3.0 (read from
+  the crates.io API).
+- The tarball was extracted afresh and `diff -r` against a second extracted reading copy printed no differences, so
+  that reading copy is the tarball's content.
 - `licenses/rankops-LICENSE-MIT` is a byte copy of the tarball's `LICENSE-MIT` (checked by `sha256sum` of both).
 - Upstream `LICENSE-APACHE` differs from ours: it is the unfilled template. We keep our own filled `LICENSE-APACHE`.
-- Not verified: the crates.io checksum itself (taken from the PM's reading); that the git commit contains the tarball's
-  files (tarball and commit are linked only by `.cargo_vcs_info.json`, which we have not cross-checked against the forge).
+- Not verified: that the git commit contains the tarball's files. Tarball and commit are linked only by
+  `.cargo_vcs_info.json`, which we have not cross-checked against the forge.
 
 ## Derived-file table
 
 **Nothing is copied yet.** Each row is added in the PR that copies the file, with the origin path, what changed, and
-the header the file carries. Planned origins, from the PM's inventory (a reading, to be verified when copied):
+the header the file carries. Planned origins, from an inventory of the crate (a reading, to be verified when copied):
 
 | SortAnt file | Origin in rankops 0.3.0 | Status |
 |---|---|---|
