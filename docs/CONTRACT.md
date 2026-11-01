@@ -1,6 +1,6 @@
 # SortAnt contract note (step 2): options first, then a recommendation
 
-Status: **proposal for the PM to read. No code follows until it is read.** Each decision lists the options, then
+Status: **read and approved by the PM with four amendments (A1-A4, folded in below). D1-D17 and the section 6 table stand.** CombANZ follows the published meaning (average of non-zero scores). Nothing here needs CireSnave. Each decision lists the options, then
 `Recommend:`. "rankops" means rankops 0.3.0 (`PROVENANCE.md`); line numbers refer to its `src/lib.rs` and come from a
 reading of the crate, not from running it. Where a decision is "decided and tested", the test is a row-4 deliverable.
 
@@ -33,17 +33,28 @@ list to `Ranked` is an explicit call that sorts by the total order (D5), so the 
 
 **D5. Total order (the central rule).** Options for equal fused scores: (a) hash of id (rankops); (b) id order;
 (c) score descending, then a designated tie-break ranker, then stable input order.
-Recommend (c), as the charter says: sort key is (score descending by `total_cmp` after validation, so no NaN, see D9;
+Recommend (c), as the charter says: sort key is (score descending by `total_cmp` after validation, so no NaN, see D9, and after canonicalising `-0.0` to `+0.0`, see A2;
 then position in the designated tie-break ranker, absent items last; then first appearance, scanning lists in the order
 given and items in list order). The tie-break ranker is a `Ranked` list or a comparator `Fn(&I, &I) -> Ordering` supplied
 in `Options`. Absent both, step two is skipped. Every public ordering, including explain, goes through this one
 function.
+*Amendment A2 (PM, approved).* `f64::total_cmp` orders `-0.0` below `+0.0`, so scores `0.0` and `-0.0` would not tie. Validation (D9) rewrites every `-0.0` score to `0.0` before anything is computed or compared. Test: two lists whose fused scores are `0.0` and `-0.0` tie and are ordered by the tie-break ranker, then by input order; the output score is `+0.0` (asserted by bit pattern); a `-0.0` input to every method is covered.
 
 **D6. Comparator-driven ranking.** SortAnt also ranks raw items, not only fuses lists.
 Options: (a) fusion only; (b) `rank_by(items, comparator)` producing a `Ranked` list, with comparator chaining.
 Recommend (b): a `Comparator<T>` that composes (`then`, `reverse`, `by_key`) and `rank_by` is a stable sort. Its output
-is the input of fusion. A comparator must be a total order; a comparator that panics or is inconsistent is the caller's
-fault and the doc says what `sort_by` guarantees (no UB, unspecified order), which we do not claim to improve.
+is the input of fusion.
+*Amendment A1 (PM, approved).* Since Rust 1.81 `slice::sort_by` may panic on a comparator that is not a total order. The
+std docs (checked in the 1.99.1 source, `alloc/src/slice.rs`) say: *"If the comparison function `compare` does not
+implement a total order, the function may panic; even if the function exits normally, the resulting order of elements in
+the slice is unspecified."* and, under Panics, *"May panic if `compare` does not implement a total order, or if `compare`
+itself panics."* So "no UB, unspecified order" was outdated. Options: (a) call std sort on caller comparators and state a
+panic exception; (b) sort caller comparators with our own safe, stable merge sort that never panics on an inconsistent
+comparator (its order is unspecified but deterministic). Recommend (b): about thirty lines under `forbid(unsafe_code)`.
+Std sort stays allowed only for orders we define ourselves (D5 keys on validated floats are a total order).
+Test: an intransitive comparator (`a < b < c < a`) and a non-reflexive one return `Ok` without panic, the same output on
+every run, and a permutation of the input (exact multiset equality asserted).
+The one remaining exception to "never panics" is a comparator closure that itself panics: that propagates, and the doc says so.
 
 **D7. Veto and Force.** Callers want "this item must not appear" and "this item must appear first".
 Options: (a) infinities in scores; (b) a typed entry `Entry::{Score(f64), Veto, Force}` inside a list; (c) `veto` and
@@ -74,8 +85,8 @@ different silent behaviours. This also fixes the CombMNZ defect by construction.
 
 **D11. `k` and `top_k` zero.** `top_k = 0` is a well-defined request for no items: return `Ok(empty)`, documented.
 RRF's `k` is a smoothing constant: `k` not finite or `<= 0` is `InvalidConfig` (rankops: doc says panic, code returns an
-empty `Vec`, constructors assert). Recommend both as stated; no function panics on any input (tested by a fuzz-style
-property test over the whole input space, including empty lists and empty list sets).
+empty `Vec`, constructors assert). Recommend both as stated; no function panics on any input, with the one exception named in A1 (a caller closure that itself panics). Tested by a fuzz-style
+property test over the whole input space, including empty lists, empty list sets, and inconsistent comparators.
 
 **D12. Errors.** One `#[non_exhaustive] enum FuseError` with data-carrying variants (`NonFiniteScore`, `DuplicateId`,
 `InvalidWeights`, `InvalidConfig`, `LengthMismatch` and the like), `Display` and `std::error::Error`. No `String`
@@ -93,6 +104,13 @@ Recommend (b): a weight is finite and `>= 0`, the sum is `> 0`, the count equals
 version we support. Mechanisms: no `HashMap` iteration order reaches output (a `HashMap` may index, never order);
 accumulation order is fixed (list order, then item order); only `+ - * /`, `sqrt` and comparisons on f64 in default
 methods (IEEE-754 exact); no `mul_add`, no `exp`/`ln`/`powf` (their last bit varies by libm).
+*Amendment A4 (PM, approved).* `powf`/`powi` are not guaranteed bit-stable, so no method uses them. Transcendentals in
+the method set, decided now: **RBC** needs `p^rank`: computed by repeated multiplication along the ranked list
+(`w_0 = 1`, `w_{r+1} = w_r * p`, then times `(1 - p)`), in that fixed order, documented. **ISR** needs a square:
+`x * x`, exact and stable. **DBSF, Standardized** need `sqrt`, which IEEE-754 requires to be correctly rounded, so it is
+allowed. **RRF, Borda, Copeland, Condorcet, median rank, CombSUM/MNZ/MAX/MIN/MED/ANZ, weighted, additive** use only
+`+ - * /` and comparisons. Any method added later that needs `exp`, `ln` or `powf` is decided at its own stage and may not
+merge without a recorded rule. Test: golden bit patterns for RBC at ranks 0, 1, 100, and 1000.
 Consequence: rankops' `Sigmoid` normalisation uses `exp`. Recommend dropping it, or keeping it behind a documented
 "not bit-reproducible across platforms" flag. Recommend dropping; no stated user.
 Test: golden outputs asserted as exact bit patterns, run in the 3-OS CI matrix that exists.
@@ -108,6 +126,15 @@ Options: (a) raw score (as now, fix the doc); (b) 0; (c) 0.5; (d) error.
 Recommend (c) 0.5: the list carries no ordering information, so it contributes the neutral midpoint, always inside
 [0,1], and the doc claim is true. Same rule for z-score variants (std below epsilon gives the neutral value); the
 neutral value is named in the doc of each method.
+
+*Amendment A3 (PM, approved).* "Constant" means exact equality, `max == min`, never an epsilon. Min-max is computed as
+`(s - min) / range` with `range = max - min`, never as `s * (1 / range)`: for a subnormal `range`, `1 / range` is infinite
+and `0 * inf` is NaN. Near-constant lists (range positive but tiny) are normalised normally by that formula; the doc
+says what that does: a spread that is numerically negligible is stretched to [0, 1], so tiny differences in a list
+decide the result. If `max - min` overflows to infinity (values near `f64::MAX` of opposite sign), the list is rejected with the typed
+error `RangeOverflow { list }`, not silently clamped. Tests: exact-equality constant
+list gives 0.5; `[0.0, 5e-324]` (subnormal range) gives `[0.0, 1.0]` with no NaN; `[-f64::MAX, f64::MAX]` gives
+`RangeOverflow`; a list one ulp from constant is not treated as constant.
 
 **D17. One normaliser.** `normalize_scores` is reused by every method that normalises; the inline copies of min-max
 disappear. Quantile and Rank ties get the same rank for equal scores (rankops: input order, so tied inputs differ).
@@ -154,10 +181,10 @@ charter's later stages.
   every place it differs is a named, documented decision from this note, with a test that asserts SortAnt's side.
 - NaN, infinity, duplicates, empty input, empty list set, `top_k = 0`, and one-item lists are cases in every stage.
 
-## 8. Questions for the PM
+## 8. Questions for the PM: answered
 
-1. D7: confirm sets in `Options` rather than a per-entry enum, and "Veto beats Force".
-2. D14: confirm dropping Sigmoid normalisation.
-3. D16: confirm 0.5 as the neutral value (it changes fused scores from rankops for constant lists).
-4. D3/D5: confirm that `Hash`/`Ord` never decide order.
-5. Anything here that needs CireSnave rather than you.
+1. D7 sets in `Options`, Veto beats Force, conflict reported in a typed field: confirmed.
+2. Drop Sigmoid: confirmed.
+3. D16 neutral value 0.5, a deliberate change from rankops for constant lists that the differential test names: confirmed.
+4. `Hash`/`Ord` never decide order: confirmed.
+5. Nothing needs CireSnave.
