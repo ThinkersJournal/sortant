@@ -54,6 +54,9 @@ comparator (its order is unspecified but deterministic). Recommend (b): about th
 Std sort stays allowed only for orders we define ourselves (D5 keys on validated floats are a total order).
 Test: an intransitive comparator (`a < b < c < a`) and a non-reflexive one return `Ok` without panic, the same output on
 every run, and a permutation of the input (exact multiset equality asserted).
+The sort has its own tests (PM condition 1): stability on equal keys; an inconsistent comparator terminates without panic;
+empty and one-item input; a few thousand items compared with std `sort_by` on a *total* order as the oracle (exact
+equality of output); and a recorded mutation check over the sort, with surviving mutants read.
 The one remaining exception to "never panics" is a comparator closure that itself panics: that propagates, and the doc says so.
 
 **D7. Veto and Force.** Callers want "this item must not appear" and "this item must appear first".
@@ -89,7 +92,7 @@ empty `Vec`, constructors assert). Recommend both as stated; no function panics 
 property test over the whole input space, including empty lists, empty list sets, and inconsistent comparators.
 
 **D12. Errors.** One `#[non_exhaustive] enum FuseError` with data-carrying variants (`NonFiniteScore`, `DuplicateId`,
-`InvalidWeights`, `InvalidConfig`, `LengthMismatch` and the like), `Display` and `std::error::Error`. No `String`
+`InvalidWeights`, `InvalidConfig`, `LengthMismatch`, `RangeOverflow` and the like), `Display` and `std::error::Error`. No `String`
 payloads that callers must parse. No empty-`Vec`-on-bad-input anywhere (rankops: lines 781, 833, 1014, 1159, and the
 explain functions).
 
