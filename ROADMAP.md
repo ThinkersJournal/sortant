@@ -8,8 +8,8 @@ Statuses: `todo`, `doing`, `blocked`, `done`. A row is `done` only when its PR i
 
 | # | Row | Status | Notes |
 |---|-----|--------|-------|
-| 0 | ROADMAP.md, CI, branch protection on `main` | doing | CI is seeded; this PR adds the roadmap. Protection is requested from the PM after merge. |
-| 1 | Provenance record: `NOTICE`/`CREDITS`, derived-file table, copy verified against the pinned tarball | todo | No other code in this row. |
+| 0 | ROADMAP.md, CI, branch protection on `main` | done | Merged in #1; protection set by the PM. |
+| 1 | Provenance record: `NOTICE`/`CREDITS`, derived-file table, copy verified against the pinned tarball | doing | No other code in this row. |
 | 2 | Contract note: options first, then a recommendation | todo | Typed `Veto`/`Force`, total-order rule, comparator-driven ranking, f64, typed errors, NaN/duplicate-id/k=0 policy, a decision record for every method, deterministic output on every platform. The PM reads it before any code. |
 | 3 | Strip per the inventory | todo | Remove `rerank/*`, SIMD/`unsafe`, MMR, metrics, optimize, trec, dp_topk, pipeline, adapt, diagnostics, pareto, hierarchical. `#![forbid(unsafe_code)]`; zero required dependencies if possible. |
 | 4 | Port in stages with value-asserting tests, property tests with golden cases, a mutation check, and differential tests against rankops 0.3.0 | todo | Order: RRF, weighted score, Borda, CombSUM, CombMNZ; Condorcet and Copeland later. |
