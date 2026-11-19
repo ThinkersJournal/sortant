@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (version to be allocated at [READY])
+## 0.0.4 (strip, ROADMAP row 3; additive; allocated by pm-assist 2026-11-19)
 
 - Strip: carry over the fusion core of rankops 0.3.0 (`src/lib.rs`, `fusion_order`, `validate`, `proptests`, 76 unit
   tests in `src/tests.rs`, the `dbsf` regression in `tests/dbsf_order.rs`), renamed, with provenance headers and
