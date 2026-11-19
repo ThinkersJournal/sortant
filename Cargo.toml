@@ -1,6 +1,6 @@
 [package]
 name = "sortant"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2024"
 rust-version = "1.88"
 description = "Planned. The crate name is reserved; there is no API yet."
@@ -10,3 +10,9 @@ readme = "README.md"
 publish = false
 
 [dependencies]
+
+[dev-dependencies]
+proptest = "1.9"
+
+[lints.rust]
+unsafe_code = "forbid"
