@@ -48,6 +48,8 @@ mod fusion_order;
 
 #[cfg(test)]
 mod proptests;
+#[cfg(test)]
+mod tests;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Error Types

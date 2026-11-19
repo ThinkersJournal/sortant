@@ -27,16 +27,21 @@ Credit and licence notices: `NOTICE`, `licenses/rankops-LICENSE-MIT`.
 
 ## Derived-file table
 
-**Nothing is copied yet.** Each row is added in the PR that copies the file, with the origin path, what changed, and
-the header the file carries. Planned origins, from an inventory of the crate (a reading, to be verified when copied):
+Copied in the strip PR (step 3). Every file below carries the header "Derived from rankops 0.3.0 ... See PROVENANCE.md";
+the upstream MIT text and copyright line are in `licenses/` and `NOTICE`. All still carry rankops' behaviour (f32 API,
+defects included) until each method is ported under `docs/CONTRACT.md` (step 4).
 
-| SortAnt file | Origin in rankops 0.3.0 | Status |
+| SortAnt file | Origin in rankops 0.3.0 | Change made |
 |---|---|---|
-| fusion methods, normalisers, configs | `src/lib.rs` lines 1-3346 (split by section) | not copied |
-| tie-break by comparator | `src/fusion_order.rs` | not copied |
-| output validators | `src/validate.rs` | not copied |
-| property tests | `src/proptests.rs` | not copied |
-| fusion unit tests | `src/lib.rs` `mod tests` (fusion share) | not copied |
+| `src/lib.rs` | `src/lib.rs` lines 1-3346 (fusion, normalisers, configs, explain) | crate renamed; rerank/metrics/pipeline/adapt/diagnostics/trec/dp_topk modules, metrics prelude, serde derives and an unverified OpenSearch benchmark claim dropped; `forbid(unsafe_code)`; rustfmt; two clippy `collapsible_if` rewrites |
+| `src/fusion_order.rs` | `src/fusion_order.rs` | crate renamed; rustfmt; clippy `collapsible_if` where flagged |
+| `src/validate.rs` | `src/validate.rs` | crate renamed; rustfmt; clippy `collapsible_if` where flagged |
+| `src/proptests.rs` | `src/proptests.rs` | crate renamed; rustfmt; clippy `collapsible_if` where flagged |
+| `src/tests.rs` | `src/lib.rs` `mod tests`, lines 4098-5537 | moved to its own file; 76 fusion tests kept; the 25 MMR, cosine, NDCG, precision, MAP, hit-rate, metric-dispatch tests and the `make_qrels` helper dropped with the code they test; rustfmt |
+| `tests/dbsf_order.rs` | `tests/bughunt_dbsf_knapsack.rs` (the `dbsf` test and `pos` helper) | crate path renamed; the `dp_knapsack` tests dropped |
+
+Not copied from rankops' `tests/`: `adaptive_mmr.rs`, `rerank_backend_contract.rs`, `trec_parity.rs`, `fixtures/`
+(all out of scope).
 
 Everything else in rankops (`rerank/*`, `adapt`, `diagnostics`, `pipeline`, `metrics`, `trec`, `dp_topk`, MMR,
 optimisation) is out of scope and will not be copied.
