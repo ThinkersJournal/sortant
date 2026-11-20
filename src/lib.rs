@@ -44,7 +44,12 @@ use std::hash::Hash;
 /// Output validators for fusion results.
 pub mod validate;
 
+pub mod error;
 mod fusion_order;
+pub mod input;
+pub mod norm;
+pub mod order;
+pub mod sort;
 
 #[cfg(test)]
 mod proptests;

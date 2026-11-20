@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.5 (canonical Apache-2.0 text, step 4 shared pieces; additive; allocated by pm-assist 2026-11-20)
+
+- `LICENSE-APACHE`: replaced with the canonical Apache-2.0 text (the old copy altered sections 6 and 9); PM finding via pm-ants.
+- Step 4 shared pieces (not yet public API surface for any method): `error`, `sort`, `order`, `input`, `norm`; `docs/MUTATION.md`.
+
 ## 0.0.4 (strip, ROADMAP row 3; additive; allocated by pm-assist 2026-11-19)
 
 - Strip: carry over the fusion core of rankops 0.3.0 (`src/lib.rs`, `fusion_order`, `validate`, `proptests`, 76 unit
