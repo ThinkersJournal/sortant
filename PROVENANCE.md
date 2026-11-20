@@ -21,7 +21,7 @@ Credit and licence notices: `NOTICE`, `licenses/rankops-LICENSE-MIT`.
 - The tarball was extracted afresh and `diff -r` against a second extracted reading copy printed no differences, so
   that reading copy is the tarball's content.
 - `licenses/rankops-LICENSE-MIT` is a byte copy of the tarball's `LICENSE-MIT` (checked by `sha256sum` of both).
-- Upstream `LICENSE-APACHE` differs from ours: it is the unfilled template. We keep our own filled `LICENSE-APACHE`.
+- Upstream `LICENSE-APACHE` is the unfilled Apache-2.0 template. Ours is the canonical Apache-2.0 text, byte-identical to the portfolio's canonical copy (sha256 `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`, 11358 bytes; replaced 2026-11-20, PM finding: our earlier copy had a non-canonical section 6 and 9). Copyright holders are named in `NOTICE` and the file headers, not in the licence text.
 - Not verified: that the git commit contains the tarball's files. Tarball and commit are linked only by
   `.cargo_vcs_info.json`, which we have not cross-checked against the forge.
 
