@@ -158,6 +158,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "innr"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e9249654a6983ff61fa7168f3adc27c0fcaac563b6ac3a9fef1d84342e26bb9"
+
+[[package]]
 name = "libc"
 version = "0.2.191"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -275,6 +281,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rankops"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d68480df682831038007caed5f2efe3d1a738fe51bcd89c536d5f0f683fb5089"
+dependencies = [
+ "innr",
+]
+
+[[package]]
 name = "regex-syntax"
 version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -340,6 +355,7 @@ name = "sortant"
 version = "0.0.5"
 dependencies = [
  "proptest",
+ "rankops",
 ]
 
 [[package]]

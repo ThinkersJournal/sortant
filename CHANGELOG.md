@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased (Stage 1: `fuse`; additive; version to be allocated at [READY])
+
+- New `sortant::fuse` module, the single entry point (contract D1): `fuse(lists, &method, &Options) -> Result<Fused, FuseError>`.
+  `Ranked<I>` lists take `RankMethod::{Rrf { k }, Borda}`, `Scored<I>` lists take `ScoreMethod::{Weighted, CombSum, CombMnz}`
+  (D4), all f64, validated (D9, D10, D11, D13, D16), ordered by the one total order (D5) with `top_k`, tie-break ranker or
+  comparator, `veto`/`force` and a typed conflict report (D7). The old f32 functions at the crate root are unchanged and
+  will be removed as their stages land.
+- Tests: exact values per method, every error, golden and generated properties, differential tests against rankops 0.3.0
+  (`tests/differential.rs`, dev-dependency `rankops =0.3.0`) with each difference named; mutation check in `docs/MUTATION.md`.
+
 ## 0.0.5 (canonical Apache-2.0 text, step 4 shared pieces; additive; allocated by pm-assist 2026-11-20)
 
 - `LICENSE-APACHE`: replaced with the canonical Apache-2.0 text (the old copy altered sections 6 and 9); PM finding via pm-ants.
