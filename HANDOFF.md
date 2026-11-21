@@ -9,15 +9,18 @@ amendments A1-A4, all approved by the PM; they are the spec, do not re-derive th
 ## State (2026-11-21; cluster PM = pm-ants; [READY] goes to pm-assist cc pm-ants)
 - main = `d438d93`, version 0.0.6. Stage 1 merged (sortant#6): `src/fuse.rs`, `src/fuse_tests.rs`, `tests/differential.rs`
   (dev-dep `rankops =0.3.0`), mutation entry in `docs/MUTATION.md`. Branch `stage1-methods` and its worktree are gone.
-- Working branch `wrappers` (worktree `C:\Projects\sortant-wt-wrappers`). A second sortant PR today is held to 2026-11-22 00:00Z
-  (pm-assist); commit freely, open ONE PR after that.
+- Working branch `wrappers` (worktree `C:\Projects\sortant-wt-wrappers`), pushed, head `490527e`: wrappers `rrf/borda/weighted/combsum/combmnz`
+  in `sortant::fuse` (root f32 names still exist), `examples/fuse_two_lists.rs`; all tests and clippy pass. No PR yet:
+  open ONE PR (`[READY]` to pm-assist cc pm-ants) at/after 2026-11-22 00:00Z; pm-ants wakes this lane by mail at 00:02Z.
+  The window never stops work: keep committing on this branch.
 - The old f32 API in `src/lib.rs` still exists; it goes as each method's stage lands (not yet).
-- No WAIT lines.
+- No WAIT lines. Lane soft-stopped 2026-11-21 (CPU load, pm-ants).
 
 ## Next (in order)
-1. Wrappers `rrf(&a,&b)` etc. for the ease gate (D1, no logic) and docs/examples (ROADMAP row 5).
-2. Later methods per the CONTRACT section 6 table: ISR, DBSF, Standardized, AdditiveMultiTask, CombMAX/MIN/MED/ANZ, RBC (A4),
+1. Open the wrappers PR when woken (see above).
+2. Stage 2 methods per the CONTRACT section 6 table: ISR, DBSF, Standardized, AdditiveMultiTask, CombMAX/MIN/MED/ANZ, RBC (A4),
    then Condorcet/Copeland, MedianRank; each with exact tests, golden properties, mutation entry, differential where correct.
+   Add each as a `RankMethod`/`ScoreMethod` variant through `fuse`.
 3. Row 6 patent sweep.
 
 ## Decisions (contract note, all PM-approved; detail in `docs/CONTRACT.md`)
