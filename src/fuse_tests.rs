@@ -571,3 +571,41 @@ proptest! {
         prop_assert_eq!(a, b);
     }
 }
+
+// ---- wrappers: each must equal the matching `fuse` call exactly -----------------------------------------------------
+
+#[test]
+fn wrappers_equal_fuse() {
+    use crate::fuse::{borda, combmnz, combsum, rrf, weighted};
+    let (ra, rb) = (r(&["x", "y", "w"]), r(&["y", "z"]));
+    let (sa, sb) = (
+        s(&[("x", 3.0), ("y", 2.0), ("w", 1.0)]),
+        s(&[("y", 5.0), ("z", 1.0)]),
+    );
+    let o = Options::new();
+    assert_eq!(rrf(&ra, &rb), fuse(&[ra.clone(), rb.clone()], &RRF, &o));
+    assert_eq!(
+        borda(&ra, &rb),
+        fuse(&[ra.clone(), rb.clone()], &RankMethod::Borda, &o)
+    );
+    for (got, m) in [
+        (weighted(&sa, &sb), ScoreMethod::Weighted),
+        (combsum(&sa, &sb), ScoreMethod::CombSum),
+        (combmnz(&sa, &sb), ScoreMethod::CombMnz),
+    ] {
+        assert_eq!(got, fuse(&[sa.clone(), sb.clone()], &m, &o));
+    }
+}
+
+#[test]
+fn wrappers_report_errors() {
+    use crate::fuse::{rrf, weighted};
+    assert!(matches!(
+        rrf(&r(&["a", "a"]), &r(&["b"])),
+        Err(FuseError::DuplicateId { .. })
+    ));
+    assert!(matches!(
+        weighted(&s(&[("a", f64::NAN)]), &s(&[("b", 1.0)])),
+        Err(FuseError::NonFiniteScore { .. })
+    ));
+}

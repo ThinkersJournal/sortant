@@ -470,3 +470,87 @@ where
         .collect();
     Ok(Fused { items, conflicts })
 }
+
+// ---- wrappers (contract D1) ---------------------------------------------------------------------------------------
+//
+// Each wrapper is one call to `fuse` with default options and no logic of its own. They live in this module, not at the
+// crate root, while the old f32 functions of the same names still exist there.
+
+/// Fuses two ranked lists with reciprocal rank fusion at `k = 60`. Same as [`fuse`] with [`RankMethod::Rrf`] and default
+/// [`Options`].
+///
+/// ```
+/// use sortant::fuse::{rrf, Ranked};
+///
+/// let fused = rrf(&Ranked::new(vec!["a", "b"]), &Ranked::new(vec!["b", "c"])).unwrap();
+/// assert_eq!(fused.items[0].0, "b");
+/// ```
+///
+/// # Errors
+///
+/// [`FuseError::DuplicateId`] if an id repeats within one list.
+pub fn rrf<I: Clone + Eq + Hash>(a: &Ranked<I>, b: &Ranked<I>) -> Result<Fused<I>, FuseError> {
+    fuse(
+        &[a.clone(), b.clone()],
+        &RankMethod::Rrf { k: 60.0 },
+        &Options::new(),
+    )
+}
+
+/// Fuses two ranked lists with a Borda count. Same as [`fuse`] with [`RankMethod::Borda`] and default [`Options`].
+///
+/// # Errors
+///
+/// [`FuseError::DuplicateId`] if an id repeats within one list.
+pub fn borda<I: Clone + Eq + Hash>(a: &Ranked<I>, b: &Ranked<I>) -> Result<Fused<I>, FuseError> {
+    fuse(&[a.clone(), b.clone()], &RankMethod::Borda, &Options::new())
+}
+
+/// Fuses two scored lists by the equal-weight sum of min-max normalised scores. Same as [`fuse`] with
+/// [`ScoreMethod::Weighted`] and default [`Options`].
+///
+/// ```
+/// use sortant::fuse::{weighted, Scored};
+///
+/// let a = Scored::new(vec![("a", 3.0), ("b", 2.0), ("c", 1.0)]);
+/// let b = Scored::new(vec![("b", 9.0), ("c", 3.0)]);
+/// let fused = weighted(&a, &b).unwrap();
+/// assert_eq!(fused.items[0].0, "b");
+/// ```
+///
+/// # Errors
+///
+/// [`FuseError::NonFiniteScore`], [`FuseError::DuplicateId`] or [`FuseError::RangeOverflow`] from the lists.
+pub fn weighted<I: Clone + Eq + Hash>(a: &Scored<I>, b: &Scored<I>) -> Result<Fused<I>, FuseError> {
+    fuse(
+        &[a.clone(), b.clone()],
+        &ScoreMethod::Weighted,
+        &Options::new(),
+    )
+}
+
+/// Fuses two scored lists with CombSUM. Same as [`fuse`] with [`ScoreMethod::CombSum`] and default [`Options`].
+///
+/// # Errors
+///
+/// As [`weighted`].
+pub fn combsum<I: Clone + Eq + Hash>(a: &Scored<I>, b: &Scored<I>) -> Result<Fused<I>, FuseError> {
+    fuse(
+        &[a.clone(), b.clone()],
+        &ScoreMethod::CombSum,
+        &Options::new(),
+    )
+}
+
+/// Fuses two scored lists with CombMNZ. Same as [`fuse`] with [`ScoreMethod::CombMnz`] and default [`Options`].
+///
+/// # Errors
+///
+/// As [`weighted`].
+pub fn combmnz<I: Clone + Eq + Hash>(a: &Scored<I>, b: &Scored<I>) -> Result<Fused<I>, FuseError> {
+    fuse(
+        &[a.clone(), b.clone()],
+        &ScoreMethod::CombMnz,
+        &Options::new(),
+    )
+}
