@@ -7,18 +7,18 @@ Origin pins, rules and the defect list: `PROVENANCE.md`, `NOTICE`, `docs/CONTRAC
 amendments A1-A4, all approved by the PM; they are the spec, do not re-derive them).
 
 ## State (2026-11-21; cluster PM = pm-ants; [READY] goes to pm-assist cc pm-ants)
-- main = `39bb72a`, version 0.0.5. Branch `stage1-methods` (worktree `C:\Projects\sortant-wt-core`) holds Stage 1: `src/fuse.rs`
-  (`Ranked`/`Scored`, `Options`, `RankMethod`, `ScoreMethod`, `fuse`), `src/fuse_tests.rs`, `tests/differential.rs`
-  (dev-dep `rankops =0.3.0`), mutation entry in `docs/MUTATION.md` (0 missed). 177 unit + 9 differential tests pass, clippy clean.
+- main = `d438d93`, version 0.0.6. Stage 1 merged (sortant#6): `src/fuse.rs`, `src/fuse_tests.rs`, `tests/differential.rs`
+  (dev-dep `rankops =0.3.0`), mutation entry in `docs/MUTATION.md`. Branch `stage1-methods` and its worktree are gone.
+- Working branch `wrappers` (worktree `C:\Projects\sortant-wt-wrappers`). A second sortant PR today is held to 2026-11-22 00:00Z
+  (pm-assist); commit freely, open ONE PR after that.
 - The old f32 API in `src/lib.rs` still exists; it goes as each method's stage lands (not yet).
-- No WAIT lines (`lane-restart waits --role sortant` finds none).
+- No WAIT lines.
 
 ## Next (in order)
-1. Open the Stage 1 PR (one per day), send `[READY]` to pm-assist cc pm-ants; PM allocates the version.
-2. Wrappers `rrf(&a,&b)` etc. for the ease gate (D1, no logic) and docs/examples (ROADMAP row 5).
-3. Later methods per the CONTRACT section 6 table: ISR, DBSF, Standardized, AdditiveMultiTask, CombMAX/MIN/MED/ANZ, RBC (A4),
+1. Wrappers `rrf(&a,&b)` etc. for the ease gate (D1, no logic) and docs/examples (ROADMAP row 5).
+2. Later methods per the CONTRACT section 6 table: ISR, DBSF, Standardized, AdditiveMultiTask, CombMAX/MIN/MED/ANZ, RBC (A4),
    then Condorcet/Copeland, MedianRank; each with exact tests, golden properties, mutation entry, differential where correct.
-4. Row 6 patent sweep.
+3. Row 6 patent sweep.
 
 ## Decisions (contract note, all PM-approved; detail in `docs/CONTRACT.md`)
 D1 one `fuse` entry + logic-free wrappers. D2 zero deps, forbid unsafe. D3 id is `Clone+Eq+Hash`, never orders. D4 `Ranked` vs
