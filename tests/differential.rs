@@ -86,6 +86,14 @@ proptest! {
     }
 
     #[test]
+    fn isr_agrees(g in ranked_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Ranked::new).collect();
+        let ours = fuse(&lists, &RankMethod::Isr { k: 1.0 }, &Options::new()).unwrap();
+        let theirs = rankops::isr_multi(&as_rank(&g), rankops::RrfConfig::new(1));
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
     fn borda_agrees(g in ranked_lists()) {
         let lists: Vec<_> = g.iter().cloned().map(Ranked::new).collect();
         let ours = fuse(&lists, &RankMethod::Borda, &Options::new()).unwrap();

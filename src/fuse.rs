@@ -116,6 +116,14 @@ pub enum RankMethod {
     /// Borda count: an item at 0-indexed position `p` in a list of `n` items adds `weight * (n - p)` (the first item
     /// gets `n`, the last gets 1). Items absent from a list get 0 from it.
     Borda,
+    /// Inverse square-root rank: each list adds `weight / sqrt(k + pos)` with 0-indexed `pos`. This is the formula
+    /// rankops 0.3.0 uses; it is not the inverse-square-rank of Mourao et al. `k` must be finite and `> 0`
+    /// ([`FuseError::InvalidConfig`] otherwise), which also keeps `pos = 0` from dividing by zero. Uses only `sqrt`,
+    /// which IEEE-754 rounds exactly (contract D14).
+    Isr {
+        /// The smoothing constant.
+        k: f64,
+    },
 }
 
 /// Methods that read scores in [`Scored`] lists. Every method min-max normalises each list first (contract D16, D17:
@@ -166,7 +174,7 @@ impl<I: Clone + Eq + Hash> Source<I> for Ranked<I> {
         method: &RankMethod,
         weights: &[f64],
     ) -> Result<Vec<Vec<(I, f64)>>, FuseError> {
-        if let RankMethod::Rrf { k } = *method
+        if let RankMethod::Rrf { k } | RankMethod::Isr { k } = *method
             && !(k.is_finite() && k > 0.0)
         {
             return Err(FuseError::InvalidConfig {
@@ -188,6 +196,7 @@ impl<I: Clone + Eq + Hash> Source<I> for Ranked<I> {
                         // 1-indexed rank = pos + 1; usize -> f64 is exact below 2^53 (D15).
                         RankMethod::Rrf { k } => w / (k + (pos + 1) as f64),
                         RankMethod::Borda => w * (n - pos) as f64,
+                        RankMethod::Isr { k } => w / (k + pos as f64).sqrt(),
                     };
                     (id.clone(), c)
                 })

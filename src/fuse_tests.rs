@@ -62,6 +62,49 @@ fn rrf_other_k() {
 }
 
 #[test]
+fn isr_exact_values() {
+    let out = fuse(
+        &[r(&["x", "y"]), r(&["y", "z"])],
+        &RankMethod::Isr { k: 1.0 },
+        &Options::new(),
+    )
+    .unwrap();
+    // pos 0 -> 1/sqrt(1), pos 1 -> 1/sqrt(2)
+    let h = 1.0 / 2.0_f64.sqrt();
+    assert_eq!(out.items, vec![("y", 1.0 + h), ("x", 1.0), ("z", h)]);
+}
+
+#[test]
+fn isr_weighted_exact_values() {
+    let o = Options::new().weights(vec![4.0, 1.0]);
+    let out = fuse(
+        &[r(&["x"]), r(&["x", "y"])],
+        &RankMethod::Isr { k: 3.0 },
+        &o,
+    )
+    .unwrap();
+    // x: 4/sqrt(3) + 1/sqrt(3); y: 1/sqrt(4)
+    assert_eq!(
+        out.items,
+        vec![
+            ("x", 4.0 / 3.0_f64.sqrt() + 1.0 / 3.0_f64.sqrt()),
+            ("y", 0.5)
+        ]
+    );
+}
+
+#[test]
+fn bad_isr_k_is_invalid_config() {
+    for k in [0.0, -1.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        let e = fuse(&[r(&["x"])], &RankMethod::Isr { k }, &Options::new()).unwrap_err();
+        assert!(
+            matches!(e, FuseError::InvalidConfig { parameter: "k", .. }),
+            "{e:?}"
+        );
+    }
+}
+
+#[test]
 fn borda_exact_values() {
     let out = fuse(
         &[r(&["x", "y", "z"]), r(&["z", "x"])],
@@ -502,7 +545,7 @@ fn golden_cases_hold_the_contract_invariants() {
     ];
     for g in golden {
         let lists: Vec<Ranked<u8>> = g.iter().cloned().map(Ranked::new).collect();
-        for m in [RRF, RankMethod::Borda] {
+        for m in [RRF, RankMethod::Borda, RankMethod::Isr { k: 1.0 }] {
             let out = fuse(&lists, &m, &Options::new()).unwrap();
             let mut got = ids(&out);
             got.sort_unstable();
@@ -529,7 +572,7 @@ proptest! {
     #[test]
     fn rank_fusion_is_total_sorted_and_a_union(g in arb_ranked(), top in prop::option::of(0usize..15)) {
         let lists: Vec<Ranked<u8>> = g.iter().cloned().map(Ranked::new).collect();
-        for m in [RRF, RankMethod::Borda] {
+        for m in [RRF, RankMethod::Borda, RankMethod::Isr { k: 1.0 }] {
             let base = fuse(&lists, &m, &Options::new()).unwrap();
             let mut got = ids(&base);
             got.sort_unstable();
