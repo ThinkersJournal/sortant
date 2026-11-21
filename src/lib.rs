@@ -45,12 +45,15 @@ use std::hash::Hash;
 pub mod validate;
 
 pub mod error;
+pub mod fuse;
 mod fusion_order;
 pub mod input;
 pub mod norm;
 pub mod order;
 pub mod sort;
 
+#[cfg(test)]
+mod fuse_tests;
 #[cfg(test)]
 mod proptests;
 #[cfg(test)]

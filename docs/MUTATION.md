@@ -17,3 +17,17 @@ One entry per stage: tool, command, ref, result, and every surviving mutant read
 | `sort.rs` `start += 2*width` -> `*=`, `2 * width` -> `2 / width`, `width *= 2` -> `/=` | caught as TIMEOUT | the loop no longer terminates |
 
 No surviving mutant is a real gap. Re-run after any change to these files.
+
+## Stage 1: `fuse` (`src/fuse.rs`)
+
+`cargo-mutants 27.1.0`, `cargo mutants --file src/fuse.rs --no-shuffle -j3`, branch `stage1-methods` (2026-11-21).
+First run: 90 mutants, 70 caught, 18 unviable, **2 missed**:
+
+| Mutant | Verdict | Reading |
+|---|---|---|
+| `Scored::len` -> `1` | real gap | the accessor test only used a one-item list; added a three-item and an empty case |
+| `total > 0.0` -> `>= 0.0` in weight normalisation | unreachable | `check_weights` rejects a zero sum; the guard only mattered for "no lists", where the loop is empty. Guard removed |
+
+Re-run after both changes: 87 mutants, **69 caught, 18 unviable, 0 missed**. The unviable ones are mutants that do not
+compile (return-type replacements on generic items). The differential tests are part of what kills the arithmetic
+mutants (Borda `n - pos`, RRF rank offset); they are not a separate check.
