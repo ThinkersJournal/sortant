@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (Stage 1: `fuse`; additive; version to be allocated at [READY])
+## 0.0.6 (Stage 1: `fuse`; additive; allocated by pm-assist 2026-11-21)
 
 - New `sortant::fuse` module, the single entry point (contract D1): `fuse(lists, &method, &Options) -> Result<Fused, FuseError>`.
   `Ranked<I>` lists take `RankMethod::{Rrf { k }, Borda}`, `Scored<I>` lists take `ScoreMethod::{Weighted, CombSum, CombMnz}`
