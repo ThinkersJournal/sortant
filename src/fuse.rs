@@ -19,7 +19,7 @@
 
 use crate::error::{FuseError, WeightProblem};
 use crate::input::{check_ranked, check_scored};
-use crate::norm::min_max;
+use crate::norm::{dbsf, min_max};
 use crate::order::{canonical_score, score_descending};
 use crate::sort::stable_sort_by;
 use std::cmp::Ordering;
@@ -126,7 +126,7 @@ pub enum RankMethod {
     },
 }
 
-/// Methods that read scores in [`Scored`] lists. Every method min-max normalises each list first (contract D16, D17:
+/// Methods that read scores in [`Scored`] lists. Every method but `Dbsf` min-max normalises each list first (contract D16, D17:
 /// a constant list normalises to 0.5, a range that overflows is [`FuseError::RangeOverflow`]); absent items get 0.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
@@ -138,6 +138,10 @@ pub enum ScoreMethod {
     /// `CombSum` multiplied by the number of lists that contain the item (the lists, because a duplicate id inside one
     /// list is an error, contract D10).
     CombMnz,
+    /// Distribution-based score fusion: each list is normalised by its own mean and population standard deviation
+    /// (`z = (s - mean) / std` clamped to `[-3, 3]`, then `z / 6 + 0.5`; see [`crate::norm::dbsf`]) instead of
+    /// min-max, then summed with the weights as given. A list with `std <= 1e-9` normalises to 0.5.
+    Dbsf,
 }
 
 mod sealed {
@@ -220,14 +224,17 @@ impl<I: Clone + Eq + Hash> Source<I> for Scored<I> {
 
     fn contributions(
         lists: &[Self],
-        _: &ScoreMethod,
+        method: &ScoreMethod,
         weights: &[f64],
     ) -> Result<Vec<Vec<(I, f64)>>, FuseError> {
         let mut out = Vec::with_capacity(lists.len());
         for (list, scored) in lists.iter().enumerate() {
             let checked = check_scored(list, &scored.items)?;
             let scores: Vec<f64> = checked.iter().map(|x| x.1).collect();
-            let norm = min_max(list, &scores)?;
+            let norm = match method {
+                ScoreMethod::Dbsf => dbsf(list, &scores)?,
+                _ => min_max(list, &scores)?,
+            };
             let w = weights[list];
             out.push(
                 checked

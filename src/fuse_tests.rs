@@ -128,6 +128,52 @@ fn two_scored() -> [Scored<&'static str>; 2] {
 }
 
 #[test]
+fn dbsf_exact_values() {
+    // list 1: mean 2, population std 1 -> z = +1, -1. list 2: both 9 -> constant -> 0.5 each.
+    let out = fuse(
+        &[s(&[("x", 3.0), ("y", 1.0)]), s(&[("y", 9.0), ("z", 9.0)])],
+        &ScoreMethod::Dbsf,
+        &Options::new(),
+    )
+    .unwrap();
+    let hi = 1.0 / 6.0 + 0.5;
+    let lo = -1.0 / 6.0 + 0.5;
+    assert_eq!(out.items, vec![("y", lo + 0.5), ("x", hi), ("z", 0.5)]);
+}
+
+#[test]
+fn dbsf_clamps_outliers_to_three_sigma() {
+    let mut v: Vec<(String, f64)> = (0..10).map(|i| (format!("a{i}"), 0.0)).collect();
+    v.push(("big".to_string(), 100.0));
+    // the outlier's z is sqrt(10) > 3, so it clamps to exactly 3 / 6 + 0.5 = 1
+    let out = fuse(&[Scored::new(v)], &ScoreMethod::Dbsf, &Options::new()).unwrap();
+    assert_eq!(out.items[0], ("big".to_string(), 1.0));
+}
+
+#[test]
+fn dbsf_overflow_is_range_overflow() {
+    let e = fuse(
+        &[s(&[("x", f64::MAX), ("y", f64::MAX)])],
+        &ScoreMethod::Dbsf,
+        &Options::new(),
+    )
+    .unwrap_err();
+    assert_eq!(e, FuseError::RangeOverflow { list: 0 });
+}
+
+#[test]
+fn dbsf_variance_overflow_with_finite_mean_is_range_overflow() {
+    // mean 0 is finite, but the squared deviations overflow, so the std is infinite
+    let e = fuse(
+        &[s(&[("x", f64::MAX), ("y", -f64::MAX)])],
+        &ScoreMethod::Dbsf,
+        &Options::new(),
+    )
+    .unwrap_err();
+    assert_eq!(e, FuseError::RangeOverflow { list: 0 });
+}
+
+#[test]
 fn combsum_exact_values_and_input_order_ties() {
     let out = fuse(&two_scored(), &ScoreMethod::CombSum, &Options::new()).unwrap();
     // normalised: x=1, y=0 | y=1, z=0  => x=1, y=1, z=0; x and y tie, x appeared first

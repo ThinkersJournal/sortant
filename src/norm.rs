@@ -38,6 +38,44 @@ pub fn min_max(list: usize, scores: &[f64]) -> Result<Vec<f64>, FuseError> {
     Ok(scores.iter().map(|&s| (s - min) / range).collect())
 }
 
+/// Below this population standard deviation a list counts as constant for [`dbsf`] (contract D16; the same absolute
+/// threshold rankops uses).
+pub const STD_EPSILON: f64 = 1e-9;
+
+/// Distribution-based score fusion normalisation of one list of finite scores: `z = (s - mean) / std` with the
+/// population standard deviation, `z` clamped to `[-3, 3]`, result `z / 6 + 0.5`, so `[mean - 3 std, mean + 3 std]`
+/// maps to `[0, 1]`.
+///
+/// - **Constant list** (`std <= STD_EPSILON`, which includes one item): every score becomes `0.5` (contract D16).
+/// - **Empty list**: returns an empty vector.
+/// - If the sum, mean or variance is not finite (values near `f64::MAX`), fails with [`FuseError::RangeOverflow`].
+///
+/// Uses `+ - * /` and `sqrt` (correctly rounded by IEEE-754), accumulating in list order, so the result is
+/// bit-identical on every platform (contract D14).
+pub fn dbsf(list: usize, scores: &[f64]) -> Result<Vec<f64>, FuseError> {
+    if scores.is_empty() {
+        return Ok(Vec::new());
+    }
+    let n = scores.len() as f64;
+    let mean = scores.iter().sum::<f64>() / n;
+    let mut sq = 0.0;
+    for &s in scores {
+        let d = s - mean;
+        sq += d * d;
+    }
+    let std = (sq / n).sqrt();
+    if !(mean.is_finite() && std.is_finite()) {
+        return Err(FuseError::RangeOverflow { list });
+    }
+    if std <= STD_EPSILON {
+        return Ok(vec![0.5; scores.len()]);
+    }
+    Ok(scores
+        .iter()
+        .map(|&s| ((s - mean) / std).clamp(-3.0, 3.0) / 6.0 + 0.5)
+        .collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -38,3 +38,12 @@ mutants (Borda `n - pos`, RRF rank offset); they are not a separate check.
 75 mutants, **61 caught, 14 unviable, 0 missed, 0 timeouts**. The count is lower than Stage 1's 87 and was not
 investigated; the zero-missed result stands for the file as it is at this ref. The ISR arithmetic (`k + pos`, `sqrt`,
 weight) is killed by the exact-value tests and `isr_agrees`.
+
+## Stage 2: DBSF (`src/norm.rs` `dbsf`, `src/fuse.rs`)
+
+`cargo-mutants 27.1.0`, `cargo mutants --file src/norm.rs --file src/fuse.rs --no-shuffle -j3`, branch `wrappers`
+(2026-11-21). First run: 156 mutants, 115 caught, 38 unviable, **3 missed**: `min_max` `<` -> `<=` and `>` -> `>=`
+(equivalent, already read in the step 4 table) and `&&` -> `||` in `dbsf`'s overflow guard (real gap: a finite mean with
+an infinite std from overflowing squares; added `dbsf_variance_overflow_with_finite_mean_is_range_overflow`). Re-run on
+`src/norm.rs` alone after the fix: 44 mutants, 42 caught, the same 2 equivalents missed, 0 unviable. `fuse.rs` was not
+re-run after the fix, which touched only a test.

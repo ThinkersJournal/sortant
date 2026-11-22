@@ -102,6 +102,14 @@ proptest! {
     }
 
     #[test]
+    fn dbsf_agrees(g in scored_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Scored::new).collect();
+        let ours = fuse(&lists, &ScoreMethod::Dbsf, &Options::new()).unwrap();
+        let theirs = rankops::dbsf_multi(&as_f32(&g), rankops::FusionConfig::default());
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
     fn combsum_agrees(g in scored_lists()) {
         let lists: Vec<_> = g.iter().cloned().map(Scored::new).collect();
         let ours = fuse(&lists, &ScoreMethod::CombSum, &Options::new()).unwrap();
