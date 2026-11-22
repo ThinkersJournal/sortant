@@ -47,3 +47,10 @@ weight) is killed by the exact-value tests and `isr_agrees`.
 an infinite std from overflowing squares; added `dbsf_variance_overflow_with_finite_mean_is_range_overflow`). Re-run on
 `src/norm.rs` alone after the fix: 44 mutants, 42 caught, the same 2 equivalents missed, 0 unviable. `fuse.rs` was not
 re-run after the fix, which touched only a test.
+
+## Stage 2: Standardized (`src/norm.rs` `standardize`, `src/fuse.rs`)
+
+`cargo-mutants 27.1.0`, `cargo mutants --file src/norm.rs --file src/fuse.rs --no-shuffle -j3`, branch `wrappers`
+(2026-11-21), run before the AdditiveMultiTask test was added (that commit changed only a test and CONTRACT.md):
+184 mutants, **144 caught, 38 unviable, 2 missed, 0 timeouts**. The 2 missed are the `min_max` `<` -> `<=` and
+`>` -> `>=` mutants, equivalent and already read in the step 4 table. No new gap.
