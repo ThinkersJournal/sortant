@@ -113,10 +113,9 @@ pub fn median_rank<I: Clone + Eq + Hash>(lists: &[&[I]], weights: &[f64]) -> Vec
             for (k, &(pos, w)) in pts.iter().enumerate() {
                 cum += w;
                 if cum * 2.0 >= total {
-                    median = if cum * 2.0 == total && k + 1 < pts.len() {
-                        (pos as f64 + pts[k + 1].0 as f64) / 2.0
-                    } else {
-                        pos as f64
+                    median = match pts.get(k + 1) {
+                        Some(next) if cum * 2.0 == total => (pos as f64 + next.0 as f64) / 2.0,
+                        _ => pos as f64,
                     };
                     break;
                 }

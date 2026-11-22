@@ -66,3 +66,14 @@ find out why those two hang instead of failing, so the cause is unread.
 
 `cargo-mutants 27.1.0`, `cargo mutants --file src/fuse.rs --no-shuffle -j3`, branch `wrappers` at `55593b0`
 (2026-11-21): 171 mutants, **132 caught, 39 unviable, 0 missed, 0 timeouts**.
+
+## Stage 2: Condorcet, Copeland, MedianRank (`src/pairwise.rs`, `src/fuse.rs`)
+
+`cargo-mutants 27.1.0`, `cargo mutants --file src/pairwise.rs --file src/fuse.rs --no-shuffle -j3`, branch `wrappers`
+at `9f96067` (2026-11-21): 300 mutants, 216 caught, 59 unviable, **5 missed**. Three were equivalent: in
+`preference_weights`, `x < y` -> `<=`, `y < x` -> `<=` and the guard `y < x` -> `true`, because two different items in
+one list never share a position (duplicates are an error, D10) and `i == j` pairs are skipped. The other two,
+`k + 1 < pts.len()` -> `<=` / `k * 1 <`, were unreachable-equal (half the weight cannot be reached at the last
+entry because the total is non-zero) but would have indexed past the end if reached, so the code was changed to
+`pts.get(k + 1)`. Re-run on `src/pairwise.rs` alone after that change: 93 mutants, 76 caught, 14 unviable, 3 missed (the
+three equivalents above). `fuse.rs` was not re-run after the change.
