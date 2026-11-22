@@ -375,6 +375,93 @@ fn bad_rbc_persistence_is_invalid_config() {
     }
 }
 
+fn three_ranked() -> [Ranked<&'static str>; 3] {
+    [r(&["x", "y", "z"]), r(&["y", "x"]), r(&["x", "z"])]
+}
+
+#[test]
+fn condorcet_exact_values() {
+    let out = fuse(&three_ranked(), &RankMethod::Condorcet, &Options::new()).unwrap();
+    assert_eq!(out.items, vec![("x", 2.0), ("y", 1.0), ("z", 0.0)]);
+}
+
+#[test]
+fn copeland_exact_values() {
+    let out = fuse(&three_ranked(), &RankMethod::Copeland, &Options::new()).unwrap();
+    assert_eq!(out.items, vec![("x", 2.0), ("y", 0.0), ("z", -2.0)]);
+}
+
+#[test]
+fn median_rank_exact_values() {
+    // penalty position = longest list (3) + 1 = 4
+    let out = fuse(&three_ranked(), &RankMethod::MedianRank, &Options::new()).unwrap();
+    assert_eq!(out.items, vec![("x", 1.0), ("y", 0.5), ("z", 1.0 / 3.0)]);
+}
+
+#[test]
+fn median_rank_even_count_takes_the_midpoint() {
+    let out = fuse(
+        &[r(&["x"]), r(&["a", "b", "x"])],
+        &RankMethod::MedianRank,
+        &Options::new(),
+    )
+    .unwrap();
+    // x at positions 0 and 2 -> median 1; a at 0 and the penalty 4 -> 2; b at 1 and 4 -> 2.5
+    assert_eq!(
+        out.items,
+        vec![("x", 0.5), ("a", 1.0 / 3.0), ("b", 1.0 / 3.5)]
+    );
+}
+
+#[test]
+fn pairwise_methods_honour_weights() {
+    fn c(
+        lists: &[Ranked<&'static str>],
+        m: &RankMethod,
+        o: &Options<&'static str>,
+    ) -> Vec<(&'static str, f64)> {
+        fuse(lists, m, o).unwrap().items
+    }
+    let lists = [r(&["a", "b"]), r(&["b", "a"])];
+    let unit = Options::new();
+    let heavy = Options::new().weights(vec![3.0, 1.0]);
+    assert_eq!(
+        c(&lists, &RankMethod::Condorcet, &unit),
+        vec![("a", 0.0), ("b", 0.0)]
+    );
+    assert_eq!(
+        c(&lists, &RankMethod::Condorcet, &heavy),
+        vec![("a", 1.0), ("b", 0.0)]
+    );
+    assert_eq!(
+        c(&lists, &RankMethod::Copeland, &unit),
+        vec![("a", 0.0), ("b", 0.0)]
+    );
+    assert_eq!(
+        c(&lists, &RankMethod::Copeland, &heavy),
+        vec![("a", 1.0), ("b", -1.0)]
+    );
+    // median: a is at 0 (weight 3) and 1 (weight 1) -> 0; b is at 0 (weight 1) and 1 (weight 3) -> 1
+    assert_eq!(
+        c(&lists, &RankMethod::MedianRank, &heavy),
+        vec![("a", 1.0), ("b", 0.5)]
+    );
+}
+
+#[test]
+fn pairwise_methods_reject_duplicates_and_bad_weights() {
+    for m in [
+        RankMethod::Condorcet,
+        RankMethod::Copeland,
+        RankMethod::MedianRank,
+    ] {
+        let e = fuse(&[r(&["a", "a"])], &m, &Options::new()).unwrap_err();
+        assert!(matches!(e, FuseError::DuplicateId { .. }), "{e:?}");
+        let e = fuse(&[r(&["a"])], &m, &Options::new().weights(vec![1.0, 2.0])).unwrap_err();
+        assert!(matches!(e, FuseError::LengthMismatch { .. }), "{e:?}");
+    }
+}
+
 #[test]
 fn combsum_exact_values_and_input_order_ties() {
     let out = fuse(&two_scored(), &ScoreMethod::CombSum, &Options::new()).unwrap();

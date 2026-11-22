@@ -132,6 +132,17 @@ pub enum RankMethod {
         /// The persistence `p`.
         persistence: f64,
     },
+    /// Condorcet (simplified, not Kemeny optimal): an item's score is the number of other items it beats, where it
+    /// beats another when the lists preferring it carry more than half of the total weight. A list prefers the better
+    /// position, and an item present in a list beats one absent from it. Unit weights: a strict majority of all lists.
+    Condorcet,
+    /// Copeland: pairwise wins minus pairwise losses, the heavier side of each pair deciding (equal weight is a tie).
+    Copeland,
+    /// Median rank: the weighted median of an item's 0-indexed positions, a list without the item counting as position
+    /// `(longest list length) + 1`, scored as `1 / (1 + median)`. With unit weights an even count takes the mean of the
+    /// two middle positions. rankops' doc said `max_rank + 1` while its code used
+    /// `length + 1` in 0-indexed positions; SortAnt states and keeps the code's rule.
+    MedianRank,
 }
 
 /// Methods that read scores in [`Scored`] lists. Every method but `Dbsf`, `Standardized` and the raw `CombMax/Min/Med/Anz` min-max normalises each list first (contract D16, D17:
@@ -195,6 +206,17 @@ pub trait Source<I>: sealed::Sealed + Sized {
 
     #[doc(hidden)]
     fn normalise_weights(method: &Self::Method) -> bool;
+
+    /// Methods that compare items across all lists return their `(id, score)` pairs here, in first-appearance order;
+    /// everything else returns `None` and goes through [`Source::contributions`].
+    #[doc(hidden)]
+    fn global(
+        _lists: &[Self],
+        _method: &Self::Method,
+        _weights: &[f64],
+    ) -> Option<Result<Vec<(I, f64)>, FuseError>> {
+        None
+    }
 }
 
 impl<I> sealed::Sealed for Ranked<I> {}
@@ -240,6 +262,10 @@ impl<I: Clone + Eq + Hash> Source<I> for Ranked<I> {
                         RankMethod::Rrf { k } => w / (k + (pos + 1) as f64),
                         RankMethod::Borda => w * (n - pos) as f64,
                         RankMethod::Isr { k } => w / (k + pos as f64).sqrt(),
+                        // handled by `global`, never reached through `fuse`
+                        RankMethod::Condorcet | RankMethod::Copeland | RankMethod::MedianRank => {
+                            0.0
+                        }
                         RankMethod::Rbc { persistence } => {
                             let c = w * (power * (1.0 - persistence));
                             power *= persistence;
@@ -260,6 +286,26 @@ impl<I: Clone + Eq + Hash> Source<I> for Ranked<I> {
 
     fn normalise_weights(_: &RankMethod) -> bool {
         false
+    }
+
+    fn global(
+        lists: &[Self],
+        method: &RankMethod,
+        weights: &[f64],
+    ) -> Option<Result<Vec<(I, f64)>, FuseError>> {
+        let f = match method {
+            RankMethod::Condorcet => crate::pairwise::condorcet::<I>,
+            RankMethod::Copeland => crate::pairwise::copeland::<I>,
+            RankMethod::MedianRank => crate::pairwise::median_rank::<I>,
+            _ => return None,
+        };
+        for (list, ranked) in lists.iter().enumerate() {
+            if let Err(e) = check_ranked(list, &ranked.items) {
+                return Some(Err(e));
+            }
+        }
+        let slices: Vec<&[I]> = lists.iter().map(|l| l.items.as_slice()).collect();
+        Some(Ok(f(&slices, weights)))
     }
 }
 
@@ -539,7 +585,11 @@ where
             *w /= total;
         }
     }
-    let rows = L::contributions(lists, method, &weights)?;
+    let rows = match L::global(lists, method, &weights) {
+        // one single-element row per item, so the accumulation below keeps first-appearance order
+        Some(scored) => vec![scored?],
+        None => L::contributions(lists, method, &weights)?,
+    };
 
     // Accumulate in list order, then item order; the map indexes, it never orders (D14).
     let mut index: HashMap<I, usize> = HashMap::new();

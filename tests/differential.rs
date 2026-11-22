@@ -111,6 +111,30 @@ proptest! {
     }
 
     #[test]
+    fn condorcet_agrees(g in ranked_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Ranked::new).collect();
+        let ours = fuse(&lists, &RankMethod::Condorcet, &Options::new()).unwrap();
+        let theirs = rankops::condorcet_multi(&as_rank(&g), rankops::FusionConfig::default());
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
+    fn copeland_agrees(g in ranked_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Ranked::new).collect();
+        let ours = fuse(&lists, &RankMethod::Copeland, &Options::new()).unwrap();
+        let theirs = rankops::copeland_multi(&as_rank(&g), rankops::FusionConfig::default());
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
+    fn median_rank_agrees(g in ranked_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Ranked::new).collect();
+        let ours = fuse(&lists, &RankMethod::MedianRank, &Options::new()).unwrap();
+        let theirs = rankops::median_rank_multi(&as_rank(&g), rankops::FusionConfig::default());
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
     fn borda_agrees(g in ranked_lists()) {
         let lists: Vec<_> = g.iter().cloned().map(Ranked::new).collect();
         let ours = fuse(&lists, &RankMethod::Borda, &Options::new()).unwrap();

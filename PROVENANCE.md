@@ -38,6 +38,7 @@ defects included) until each method is ported under `docs/CONTRACT.md` (step 4).
 | `src/validate.rs` | `src/validate.rs` | crate renamed; rustfmt; clippy `collapsible_if` where flagged |
 | `src/proptests.rs` | `src/proptests.rs` | crate renamed; rustfmt; clippy `collapsible_if` where flagged |
 | `src/tests.rs` | `src/lib.rs` `mod tests`, lines 4098-5537 | moved to its own file; 76 fusion tests kept; the 25 MMR, cosine, NDCG, precision, MAP, hit-rate, metric-dispatch tests and the `make_qrels` helper dropped with the code they test; rustfmt |
+| `src/pairwise.rs` | `src/lib.rs` `condorcet_multi`, `copeland_multi`, `median_rank_multi` (lines 3100-3340 in the carried copy) | reimplemented, not copied: same pairwise rules and median-rank penalty (`longest list + 1`, 0-indexed), but f64, first-appearance order instead of `HashSet` order, per-list weights (D13), no `i32`/`f32` counters; checked against rankops by `tests/differential.rs` |
 | `tests/dbsf_order.rs` | `tests/bughunt_dbsf_knapsack.rs` (the `dbsf` test and `pos` helper) | crate path renamed; the `dp_knapsack` tests dropped |
 
 Not copied from rankops' `tests/`: `adaptive_mmr.rs`, `rerank_backend_contract.rs`, `trec_parity.rs`, `fixtures/`
