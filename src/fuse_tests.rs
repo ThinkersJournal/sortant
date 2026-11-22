@@ -173,6 +173,81 @@ fn dbsf_variance_overflow_with_finite_mean_is_range_overflow() {
     assert_eq!(e, FuseError::RangeOverflow { list: 0 });
 }
 
+const STD3: ScoreMethod = ScoreMethod::Standardized {
+    clip_min: -3.0,
+    clip_max: 3.0,
+};
+
+#[test]
+fn standardized_exact_values() {
+    // list 1: mean 2, std 1 -> z = +1, -1. list 2: constant -> 0 each.
+    let out = fuse(
+        &[s(&[("x", 3.0), ("y", 1.0)]), s(&[("y", 9.0), ("z", 9.0)])],
+        &STD3,
+        &Options::new(),
+    )
+    .unwrap();
+    assert_eq!(out.items, vec![("x", 1.0), ("z", 0.0), ("y", -1.0)]);
+}
+
+#[test]
+fn standardized_clips_to_the_given_range() {
+    let m = ScoreMethod::Standardized {
+        clip_min: -0.5,
+        clip_max: 0.5,
+    };
+    let out = fuse(&[s(&[("x", 3.0), ("y", 1.0)])], &m, &Options::new()).unwrap();
+    assert_eq!(out.items, vec![("x", 0.5), ("y", -0.5)]);
+}
+
+#[test]
+fn bad_standardized_clip_is_invalid_config_not_a_panic() {
+    let cases = [
+        (f64::NAN, 1.0, "clip_min"),
+        (f64::NEG_INFINITY, 1.0, "clip_min"),
+        (0.0, f64::NAN, "clip_max"),
+        (0.0, f64::INFINITY, "clip_max"),
+        (2.0, 1.0, "clip_min"),
+    ];
+    for (clip_min, clip_max, want) in cases {
+        let m = ScoreMethod::Standardized { clip_min, clip_max };
+        let e = fuse(&[s(&[("x", 1.0), ("y", 2.0)])], &m, &Options::new()).unwrap_err();
+        match e {
+            FuseError::InvalidConfig { parameter, .. } => assert_eq!(parameter, want),
+            other => panic!("unexpected {other:?}"),
+        }
+    }
+}
+
+#[test]
+fn standardized_equal_clip_bounds_are_allowed() {
+    let m = ScoreMethod::Standardized {
+        clip_min: 1.0,
+        clip_max: 1.0,
+    };
+    let out = fuse(&[s(&[("x", 3.0), ("y", 1.0)])], &m, &Options::new()).unwrap();
+    assert_eq!(out.items, vec![("x", 1.0), ("y", 1.0)]);
+}
+
+#[test]
+fn additive_multi_task_is_weighted_combsum_or_standardized_for_any_list_count() {
+    // ResFlow-style weights (1, 20, 0.5) over three lists; rankops ignores weights beyond two lists.
+    let lists = [
+        s(&[("x", 1.0), ("y", 0.0)]),
+        s(&[("x", 0.0), ("y", 1.0)]),
+        s(&[("x", 5.0), ("y", 0.0)]),
+    ];
+    let o = Options::new().weights(vec![1.0, 20.0, 0.5]);
+    let out = fuse(&lists, &ScoreMethod::CombSum, &o).unwrap();
+    assert_eq!(out.items, vec![("y", 20.0), ("x", 1.5)]);
+    let out = fuse(&lists, &STD3, &o).unwrap();
+    // each list has mean 0.5 (or 2.5) and std 0.5 (or 2.5): z = +-1
+    assert_eq!(
+        out.items,
+        vec![("y", 20.0 - 1.0 - 0.5), ("x", 1.0 - 20.0 + 0.5)]
+    );
+}
+
 #[test]
 fn combsum_exact_values_and_input_order_ties() {
     let out = fuse(&two_scored(), &ScoreMethod::CombSum, &Options::new()).unwrap();

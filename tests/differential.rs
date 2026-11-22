@@ -110,6 +110,15 @@ proptest! {
     }
 
     #[test]
+    fn standardized_agrees(g in scored_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Scored::new).collect();
+        let m = ScoreMethod::Standardized { clip_min: -3.0, clip_max: 3.0 };
+        let ours = fuse(&lists, &m, &Options::new()).unwrap();
+        let theirs = rankops::standardized_multi(&as_f32(&g), rankops::StandardizedConfig::default());
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
     fn combsum_agrees(g in scored_lists()) {
         let lists: Vec<_> = g.iter().cloned().map(Scored::new).collect();
         let ours = fuse(&lists, &ScoreMethod::CombSum, &Options::new()).unwrap();

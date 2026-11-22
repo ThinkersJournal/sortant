@@ -159,7 +159,7 @@ Stage = the row-4 order (1 first).
 | ISR | Ranked | Port | rankops uses a different formula than Mourao et al.; doc states ours; `k` per D11 | later |
 | DBSF | Scored | Port | `(s - (mu - 3 sigma)) / 6 sigma` clamped to [0,1], std below epsilon gives 0.5 (D16) | later |
 | Standardized | Scored | Decide | `clip_range` validated (`min <= max`, finite): fixes the `clamp` panic (line 1817) | later |
-| AdditiveMultiTask | Scored | Decide | weights honoured for any list count (D13); rankops ignores them (line 1971-1990) | later |
+| AdditiveMultiTask | Scored | Decide | weights honoured for any list count (D13); rankops ignores them (line 1971-1990). Not a separate method: it is `CombSum` (min-max) or `Standardized` (z-score, rankops' default) with `Options::weights`, so one path serves it (D17); test `additive_multi_task_is_weighted_combsum_or_standardized_for_any_list_count` | 2 (no variant) |
 | CombMAX, CombMIN | Scored | Port | NaN cannot occur (D9) | later |
 | CombMED | Scored | Port | median of present scores; even count averages the two middle values; documented | later |
 | CombANZ | Scored | Decide | average over lists where the score is non-zero, as its doc says (rankops averages all present scores); alternative is to keep the code and change the doc; we follow the published meaning | later |

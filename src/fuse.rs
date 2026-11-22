@@ -19,7 +19,7 @@
 
 use crate::error::{FuseError, WeightProblem};
 use crate::input::{check_ranked, check_scored};
-use crate::norm::{dbsf, min_max};
+use crate::norm::{dbsf, min_max, standardize};
 use crate::order::{canonical_score, score_descending};
 use crate::sort::stable_sort_by;
 use std::cmp::Ordering;
@@ -126,9 +126,9 @@ pub enum RankMethod {
     },
 }
 
-/// Methods that read scores in [`Scored`] lists. Every method but `Dbsf` min-max normalises each list first (contract D16, D17:
+/// Methods that read scores in [`Scored`] lists. Every method but `Dbsf` and `Standardized` min-max normalises each list first (contract D16, D17:
 /// a constant list normalises to 0.5, a range that overflows is [`FuseError::RangeOverflow`]); absent items get 0.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
 pub enum ScoreMethod {
     /// Weighted sum of normalised scores with weights scaled to sum to 1 (equal weights when none are given).
@@ -142,6 +142,16 @@ pub enum ScoreMethod {
     /// (`z = (s - mean) / std` clamped to `[-3, 3]`, then `z / 6 + 0.5`; see [`crate::norm::dbsf`]) instead of
     /// min-max, then summed with the weights as given. A list with `std <= 1e-9` normalises to 0.5.
     Dbsf,
+    /// Standardised score fusion: each list becomes z-scores (mean, population standard deviation) clamped to
+    /// `[clip_min, clip_max]`, summed with the weights as given. Absent items add 0, which is a mid-range z-score;
+    /// a constant list (`std <= 1e-9`) gives 0 for every item. `clip_min` must be finite and `<= clip_max`, which must
+    /// be finite ([`FuseError::InvalidConfig`] names the offending parameter); this fixes rankops' `clamp` panic.
+    Standardized {
+        /// Lower clip bound.
+        clip_min: f64,
+        /// Upper clip bound.
+        clip_max: f64,
+    },
 }
 
 mod sealed {
@@ -227,12 +237,28 @@ impl<I: Clone + Eq + Hash> Source<I> for Scored<I> {
         method: &ScoreMethod,
         weights: &[f64],
     ) -> Result<Vec<Vec<(I, f64)>>, FuseError> {
+        if let ScoreMethod::Standardized { clip_min, clip_max } = *method {
+            for (parameter, value) in [("clip_min", clip_min), ("clip_max", clip_max)] {
+                if !value.is_finite() {
+                    return Err(FuseError::InvalidConfig { parameter, value });
+                }
+            }
+            if clip_min > clip_max {
+                return Err(FuseError::InvalidConfig {
+                    parameter: "clip_min",
+                    value: clip_min,
+                });
+            }
+        }
         let mut out = Vec::with_capacity(lists.len());
         for (list, scored) in lists.iter().enumerate() {
             let checked = check_scored(list, &scored.items)?;
             let scores: Vec<f64> = checked.iter().map(|x| x.1).collect();
             let norm = match method {
                 ScoreMethod::Dbsf => dbsf(list, &scores)?,
+                ScoreMethod::Standardized { clip_min, clip_max } => {
+                    standardize(list, &scores, *clip_min, *clip_max)?
+                }
                 _ => min_max(list, &scores)?,
             };
             let w = weights[list];

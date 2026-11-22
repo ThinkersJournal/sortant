@@ -53,8 +53,40 @@ pub const STD_EPSILON: f64 = 1e-9;
 /// Uses `+ - * /` and `sqrt` (correctly rounded by IEEE-754), accumulating in list order, so the result is
 /// bit-identical on every platform (contract D14).
 pub fn dbsf(list: usize, scores: &[f64]) -> Result<Vec<f64>, FuseError> {
+    Ok(match mean_std(list, scores)? {
+        None => Vec::new(),
+        Some((_, std)) if std <= STD_EPSILON => vec![0.5; scores.len()],
+        Some((mean, std)) => scores
+            .iter()
+            .map(|&s| ((s - mean) / std).clamp(-3.0, 3.0) / 6.0 + 0.5)
+            .collect(),
+    })
+}
+
+/// Z-score normalisation of one list of finite scores: `z = (s - mean) / std` (population standard deviation) clamped to
+/// `[lo, hi]`. The caller validates `lo <= hi` and both finite (`f64::clamp` panics otherwise).
+///
+/// - **Constant list** (`std <= STD_EPSILON`, which includes one item): every score becomes `0.0`, the neutral z-score
+///   (contract D16).
+/// - **Empty list**: returns an empty vector.
+/// - If the sum, mean or variance is not finite, fails with [`FuseError::RangeOverflow`].
+///
+/// Same arithmetic and platform guarantee as [`dbsf`] (contract D14).
+pub fn standardize(list: usize, scores: &[f64], lo: f64, hi: f64) -> Result<Vec<f64>, FuseError> {
+    Ok(match mean_std(list, scores)? {
+        None => Vec::new(),
+        Some((_, std)) if std <= STD_EPSILON => vec![0.0; scores.len()],
+        Some((mean, std)) => scores
+            .iter()
+            .map(|&s| ((s - mean) / std).clamp(lo, hi))
+            .collect(),
+    })
+}
+
+/// Mean and population standard deviation, or `None` for an empty list.
+fn mean_std(list: usize, scores: &[f64]) -> Result<Option<(f64, f64)>, FuseError> {
     if scores.is_empty() {
-        return Ok(Vec::new());
+        return Ok(None);
     }
     let n = scores.len() as f64;
     let mean = scores.iter().sum::<f64>() / n;
@@ -67,13 +99,7 @@ pub fn dbsf(list: usize, scores: &[f64]) -> Result<Vec<f64>, FuseError> {
     if !(mean.is_finite() && std.is_finite()) {
         return Err(FuseError::RangeOverflow { list });
     }
-    if std <= STD_EPSILON {
-        return Ok(vec![0.5; scores.len()]);
-    }
-    Ok(scores
-        .iter()
-        .map(|&s| ((s - mean) / std).clamp(-3.0, 3.0) / 6.0 + 0.5)
-        .collect())
+    Ok(Some((mean, std)))
 }
 
 #[cfg(test)]
