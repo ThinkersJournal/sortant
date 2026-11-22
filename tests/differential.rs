@@ -64,6 +64,15 @@ fn scored_lists() -> impl Strategy<Value = Vec<Vec<(u8, f64)>>> {
     )
 }
 
+fn nonzero_lists() -> impl Strategy<Value = Vec<Vec<(u8, f64)>>> {
+    // CombANZ differs from rankops only on zero scores (contract section 6), so the comparison excludes zeros.
+    scored_lists().prop_map(|g| {
+        g.into_iter()
+            .map(|l| l.into_iter().filter(|x| x.1 != 0.0).collect())
+            .collect()
+    })
+}
+
 fn as_rank(g: &[Vec<u8>]) -> Vec<Vec<(u8, f32)>> {
     g.iter()
         .map(|l| l.iter().map(|&i| (i, 0.0)).collect())
@@ -86,10 +95,99 @@ proptest! {
     }
 
     #[test]
+    fn isr_agrees(g in ranked_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Ranked::new).collect();
+        let ours = fuse(&lists, &RankMethod::Isr { k: 1.0 }, &Options::new()).unwrap();
+        let theirs = rankops::isr_multi(&as_rank(&g), rankops::RrfConfig::new(1));
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
+    fn rbc_agrees(g in ranked_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Ranked::new).collect();
+        let ours = fuse(&lists, &RankMethod::Rbc { persistence: 0.5 }, &Options::new()).unwrap();
+        let theirs = rankops::rbc_multi(&as_rank(&g), 0.5);
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
+    fn condorcet_agrees(g in ranked_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Ranked::new).collect();
+        let ours = fuse(&lists, &RankMethod::Condorcet, &Options::new()).unwrap();
+        let theirs = rankops::condorcet_multi(&as_rank(&g), rankops::FusionConfig::default());
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
+    fn copeland_agrees(g in ranked_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Ranked::new).collect();
+        let ours = fuse(&lists, &RankMethod::Copeland, &Options::new()).unwrap();
+        let theirs = rankops::copeland_multi(&as_rank(&g), rankops::FusionConfig::default());
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
+    fn median_rank_agrees(g in ranked_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Ranked::new).collect();
+        let ours = fuse(&lists, &RankMethod::MedianRank, &Options::new()).unwrap();
+        let theirs = rankops::median_rank_multi(&as_rank(&g), rankops::FusionConfig::default());
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
     fn borda_agrees(g in ranked_lists()) {
         let lists: Vec<_> = g.iter().cloned().map(Ranked::new).collect();
         let ours = fuse(&lists, &RankMethod::Borda, &Options::new()).unwrap();
         let theirs = rankops::borda_multi(&as_rank(&g), rankops::FusionConfig::default());
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
+    fn dbsf_agrees(g in scored_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Scored::new).collect();
+        let ours = fuse(&lists, &ScoreMethod::Dbsf, &Options::new()).unwrap();
+        let theirs = rankops::dbsf_multi(&as_f32(&g), rankops::FusionConfig::default());
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
+    fn standardized_agrees(g in scored_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Scored::new).collect();
+        let m = ScoreMethod::Standardized { clip_min: -3.0, clip_max: 3.0 };
+        let ours = fuse(&lists, &m, &Options::new()).unwrap();
+        let theirs = rankops::standardized_multi(&as_f32(&g), rankops::StandardizedConfig::default());
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
+    fn combmax_agrees(g in scored_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Scored::new).collect();
+        let ours = fuse(&lists, &ScoreMethod::CombMax, &Options::new()).unwrap();
+        let theirs = rankops::combmax_multi(&as_f32(&g), rankops::FusionConfig::default());
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
+    fn combmin_agrees(g in scored_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Scored::new).collect();
+        let ours = fuse(&lists, &ScoreMethod::CombMin, &Options::new()).unwrap();
+        let theirs = rankops::combmin_multi(&as_f32(&g), rankops::FusionConfig::default());
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
+    fn combmed_agrees(g in scored_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Scored::new).collect();
+        let ours = fuse(&lists, &ScoreMethod::CombMed, &Options::new()).unwrap();
+        let theirs = rankops::combmed_multi(&as_f32(&g), rankops::FusionConfig::default());
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
+    fn combanz_agrees(g in nonzero_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Scored::new).collect();
+        let ours = fuse(&lists, &ScoreMethod::CombAnz, &Options::new()).unwrap();
+        let theirs = rankops::combanz_multi(&as_f32(&g), rankops::FusionConfig::default());
         agree(&ours.items, &theirs)?;
     }
 

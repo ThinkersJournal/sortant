@@ -14,6 +14,6 @@ Statuses: `todo`, `doing`, `blocked`, `done`. A row is `done` only when its PR i
 | 3 | Strip per the inventory | todo | Remove `rerank/*`, SIMD/`unsafe`, MMR, metrics, optimize, trec, dp_topk, pipeline, adapt, diagnostics, pareto, hierarchical. `#![forbid(unsafe_code)]`; zero required dependencies if possible. |
 | 4 | Port in stages with value-asserting tests, property tests with golden cases, a mutation check, and differential tests against rankops 0.3.0 | doing | Stage 1 (RRF, weighted, Borda, CombSUM, CombMNZ through `fuse`) is in the open PR; Condorcet, Copeland and the later methods follow. |
 | 5 | Our semantics (row 2), docs and examples that pass the ease gate | todo | A stranger fuses two lists in three lines. |
-| 6 | Patent sweep | todo | Ideas, queries with a positive control, claims read verbatim, "outside as read", never "clear". |
+| 6 | Patent sweep | partial (see docs/PATENT-SWEEP.md; claims unread) | Ideas, queries with a positive control, claims read verbatim, "outside as read", never "clear". |
 
 Known rankops defects that rows 2 and 4 must decide, not copy: see `HANDOFF.md`.

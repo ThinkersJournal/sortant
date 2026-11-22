@@ -31,3 +31,49 @@ First run: 90 mutants, 70 caught, 18 unviable, **2 missed**:
 Re-run after both changes: 87 mutants, **69 caught, 18 unviable, 0 missed**. The unviable ones are mutants that do not
 compile (return-type replacements on generic items). The differential tests are part of what kills the arithmetic
 mutants (Borda `n - pos`, RRF rank offset); they are not a separate check.
+
+## Stage 2: ISR (`src/fuse.rs`)
+
+`cargo-mutants 27.1.0`, `cargo mutants --file src/fuse.rs --no-shuffle -j3`, branch `wrappers` at `833898a` (2026-11-21):
+75 mutants, **61 caught, 14 unviable, 0 missed, 0 timeouts**. The count is lower than Stage 1's 87 and was not
+investigated; the zero-missed result stands for the file as it is at this ref. The ISR arithmetic (`k + pos`, `sqrt`,
+weight) is killed by the exact-value tests and `isr_agrees`.
+
+## Stage 2: DBSF (`src/norm.rs` `dbsf`, `src/fuse.rs`)
+
+`cargo-mutants 27.1.0`, `cargo mutants --file src/norm.rs --file src/fuse.rs --no-shuffle -j3`, branch `wrappers`
+(2026-11-21). First run: 156 mutants, 115 caught, 38 unviable, **3 missed**: `min_max` `<` -> `<=` and `>` -> `>=`
+(equivalent, already read in the step 4 table) and `&&` -> `||` in `dbsf`'s overflow guard (real gap: a finite mean with
+an infinite std from overflowing squares; added `dbsf_variance_overflow_with_finite_mean_is_range_overflow`). Re-run on
+`src/norm.rs` alone after the fix: 44 mutants, 42 caught, the same 2 equivalents missed, 0 unviable. `fuse.rs` was not
+re-run after the fix, which touched only a test.
+
+## Stage 2: Standardized (`src/norm.rs` `standardize`, `src/fuse.rs`)
+
+`cargo-mutants 27.1.0`, `cargo mutants --file src/norm.rs --file src/fuse.rs --no-shuffle -j3`, branch `wrappers`
+(2026-11-21), run before the AdditiveMultiTask test was added (that commit changed only a test and CONTRACT.md):
+184 mutants, **144 caught, 38 unviable, 2 missed, 0 timeouts**. The 2 missed are the `min_max` `<` -> `<=` and
+`>` -> `>=` mutants, equivalent and already read in the step 4 table. No new gap.
+
+## Stage 2: CombMAX/MIN/MED/ANZ (`src/fuse.rs`)
+
+`cargo-mutants 27.1.0`, `cargo mutants --file src/fuse.rs --no-shuffle -j3`, branch `wrappers` at `2991e87`
+(2026-11-21): 154 mutants, **114 caught, 38 unviable, 0 missed, 2 timeouts**. The timeouts are both
+`Ranked::contributions` replaced by `Ok(vec![])` / `Ok(vec![vec![]])`; a timeout counts as detected, but I did not
+find out why those two hang instead of failing, so the cause is unread.
+
+## Stage 2: RBC (`src/fuse.rs`)
+
+`cargo-mutants 27.1.0`, `cargo mutants --file src/fuse.rs --no-shuffle -j3`, branch `wrappers` at `55593b0`
+(2026-11-21): 171 mutants, **132 caught, 39 unviable, 0 missed, 0 timeouts**.
+
+## Stage 2: Condorcet, Copeland, MedianRank (`src/pairwise.rs`, `src/fuse.rs`)
+
+`cargo-mutants 27.1.0`, `cargo mutants --file src/pairwise.rs --file src/fuse.rs --no-shuffle -j3`, branch `wrappers`
+at `9f96067` (2026-11-21): 300 mutants, 216 caught, 59 unviable, **5 missed**. Three were equivalent: in
+`preference_weights`, `x < y` -> `<=`, `y < x` -> `<=` and the guard `y < x` -> `true`, because two different items in
+one list never share a position (duplicates are an error, D10) and `i == j` pairs are skipped. The other two,
+`k + 1 < pts.len()` -> `<=` / `k * 1 <`, were unreachable-equal (half the weight cannot be reached at the last
+entry because the total is non-zero) but would have indexed past the end if reached, so the code was changed to
+`pts.get(k + 1)`. Re-run on `src/pairwise.rs` alone after that change: 93 mutants, 76 caught, 14 unviable, 3 missed (the
+three equivalents above). `fuse.rs` was not re-run after the change.

@@ -50,6 +50,7 @@ mod fusion_order;
 pub mod input;
 pub mod norm;
 pub mod order;
+mod pairwise;
 pub mod sort;
 
 #[cfg(test)]

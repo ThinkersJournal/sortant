@@ -19,7 +19,7 @@
 
 use crate::error::{FuseError, WeightProblem};
 use crate::input::{check_ranked, check_scored};
-use crate::norm::min_max;
+use crate::norm::{dbsf, min_max, standardize};
 use crate::order::{canonical_score, score_descending};
 use crate::sort::stable_sort_by;
 use std::cmp::Ordering;
@@ -116,11 +116,38 @@ pub enum RankMethod {
     /// Borda count: an item at 0-indexed position `p` in a list of `n` items adds `weight * (n - p)` (the first item
     /// gets `n`, the last gets 1). Items absent from a list get 0 from it.
     Borda,
+    /// Inverse square-root rank: each list adds `weight / sqrt(k + pos)` with 0-indexed `pos`. This is the formula
+    /// rankops 0.3.0 uses; it is not the inverse-square-rank of Mourao et al. `k` must be finite and `> 0`
+    /// ([`FuseError::InvalidConfig`] otherwise), which also keeps `pos = 0` from dividing by zero. Uses only `sqrt`,
+    /// which IEEE-754 rounds exactly (contract D14).
+    Isr {
+        /// The smoothing constant.
+        k: f64,
+    },
+    /// Rank-biased centroids: an item at 0-indexed position `pos` adds `weight * (1 - p) * p^pos`. `p` (persistence)
+    /// must be strictly between 0 and 1 ([`FuseError::InvalidConfig`] otherwise). `p^pos` is built by repeated
+    /// multiplication along the list (`w_0 = 1`, `w_{pos+1} = w_pos * p`), never `powf`/`powi`, so the result is
+    /// bit-identical on every platform (contract D14, amendment A4); the contribution is `weight * (w_pos * (1 - p))`.
+    Rbc {
+        /// The persistence `p`.
+        persistence: f64,
+    },
+    /// Condorcet (simplified, not Kemeny optimal): an item's score is the number of other items it beats, where it
+    /// beats another when the lists preferring it carry more than half of the total weight. A list prefers the better
+    /// position, and an item present in a list beats one absent from it. Unit weights: a strict majority of all lists.
+    Condorcet,
+    /// Copeland: pairwise wins minus pairwise losses, the heavier side of each pair deciding (equal weight is a tie).
+    Copeland,
+    /// Median rank: the weighted median of an item's 0-indexed positions, a list without the item counting as position
+    /// `(longest list length) + 1`, scored as `1 / (1 + median)`. With unit weights an even count takes the mean of the
+    /// two middle positions. rankops' doc said `max_rank + 1` while its code used
+    /// `length + 1` in 0-indexed positions; SortAnt states and keeps the code's rule.
+    MedianRank,
 }
 
-/// Methods that read scores in [`Scored`] lists. Every method min-max normalises each list first (contract D16, D17:
+/// Methods that read scores in [`Scored`] lists. Every method but `Dbsf`, `Standardized` and the raw `CombMax/Min/Med/Anz` min-max normalises each list first (contract D16, D17:
 /// a constant list normalises to 0.5, a range that overflows is [`FuseError::RangeOverflow`]); absent items get 0.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
 pub enum ScoreMethod {
     /// Weighted sum of normalised scores with weights scaled to sum to 1 (equal weights when none are given).
@@ -130,6 +157,31 @@ pub enum ScoreMethod {
     /// `CombSum` multiplied by the number of lists that contain the item (the lists, because a duplicate id inside one
     /// list is an error, contract D10).
     CombMnz,
+    /// Distribution-based score fusion: each list is normalised by its own mean and population standard deviation
+    /// (`z = (s - mean) / std` clamped to `[-3, 3]`, then `z / 6 + 0.5`; see [`crate::norm::dbsf`]) instead of
+    /// min-max, then summed with the weights as given. A list with `std <= 1e-9` normalises to 0.5.
+    Dbsf,
+    /// Standardised score fusion: each list becomes z-scores (mean, population standard deviation) clamped to
+    /// `[clip_min, clip_max]`, summed with the weights as given. Absent items add 0, which is a mid-range z-score;
+    /// a constant list (`std <= 1e-9`) gives 0 for every item. `clip_min` must be finite and `<= clip_max`, which must
+    /// be finite ([`FuseError::InvalidConfig`] names the offending parameter); this fixes rankops' `clamp` panic.
+    Standardized {
+        /// Lower clip bound.
+        clip_min: f64,
+        /// Upper clip bound.
+        clip_max: f64,
+    },
+    /// Highest score an item has in any list that contains it. Raw scores, no normalisation (as in rankops), each
+    /// multiplied by its list's weight.
+    CombMax,
+    /// Lowest score an item has in any list that contains it. Raw scores times the list weight.
+    CombMin,
+    /// Median of an item's scores over the lists that contain it; an even count takes the midpoint of the two middle
+    /// values. Raw scores times the list weight.
+    CombMed,
+    /// Mean of an item's non-zero scores over the lists that contain it (the published CombANZ; rankops averages all
+    /// present scores, contract section 6). An item whose scores are all zero gets 0. Raw scores times the list weight.
+    CombAnz,
 }
 
 mod sealed {
@@ -149,10 +201,22 @@ pub trait Source<I>: sealed::Sealed + Sized {
     ) -> Result<Vec<Vec<(I, f64)>>, FuseError>;
 
     #[doc(hidden)]
-    fn finish(method: &Self::Method, sum: f64, lists_containing: usize) -> f64;
+    /// Combines one id's contributions, in list order, into its fused score.
+    fn finish(method: &Self::Method, contributions: &[f64]) -> f64;
 
     #[doc(hidden)]
     fn normalise_weights(method: &Self::Method) -> bool;
+
+    /// Methods that compare items across all lists return their `(id, score)` pairs here, in first-appearance order;
+    /// everything else returns `None` and goes through [`Source::contributions`].
+    #[doc(hidden)]
+    fn global(
+        _lists: &[Self],
+        _method: &Self::Method,
+        _weights: &[f64],
+    ) -> Option<Result<Vec<(I, f64)>, FuseError>> {
+        None
+    }
 }
 
 impl<I> sealed::Sealed for Ranked<I> {}
@@ -166,7 +230,15 @@ impl<I: Clone + Eq + Hash> Source<I> for Ranked<I> {
         method: &RankMethod,
         weights: &[f64],
     ) -> Result<Vec<Vec<(I, f64)>>, FuseError> {
-        if let RankMethod::Rrf { k } = *method
+        if let RankMethod::Rbc { persistence } = *method
+            && !(persistence > 0.0 && persistence < 1.0)
+        {
+            return Err(FuseError::InvalidConfig {
+                parameter: "persistence",
+                value: persistence,
+            });
+        }
+        if let RankMethod::Rrf { k } | RankMethod::Isr { k } = *method
             && !(k.is_finite() && k > 0.0)
         {
             return Err(FuseError::InvalidConfig {
@@ -179,6 +251,7 @@ impl<I: Clone + Eq + Hash> Source<I> for Ranked<I> {
             check_ranked(list, &ranked.items)?;
             let w = weights[list];
             let n = ranked.items.len();
+            let mut power = 1.0_f64; // p^pos, by repeated multiplication (Rbc only)
             let row = ranked
                 .items
                 .iter()
@@ -188,6 +261,16 @@ impl<I: Clone + Eq + Hash> Source<I> for Ranked<I> {
                         // 1-indexed rank = pos + 1; usize -> f64 is exact below 2^53 (D15).
                         RankMethod::Rrf { k } => w / (k + (pos + 1) as f64),
                         RankMethod::Borda => w * (n - pos) as f64,
+                        RankMethod::Isr { k } => w / (k + pos as f64).sqrt(),
+                        // handled by `global`, never reached through `fuse`
+                        RankMethod::Condorcet | RankMethod::Copeland | RankMethod::MedianRank => {
+                            0.0
+                        }
+                        RankMethod::Rbc { persistence } => {
+                            let c = w * (power * (1.0 - persistence));
+                            power *= persistence;
+                            c
+                        }
                     };
                     (id.clone(), c)
                 })
@@ -197,12 +280,32 @@ impl<I: Clone + Eq + Hash> Source<I> for Ranked<I> {
         Ok(out)
     }
 
-    fn finish(_: &RankMethod, sum: f64, _: usize) -> f64 {
-        sum
+    fn finish(_: &RankMethod, contributions: &[f64]) -> f64 {
+        sum_in_order(contributions)
     }
 
     fn normalise_weights(_: &RankMethod) -> bool {
         false
+    }
+
+    fn global(
+        lists: &[Self],
+        method: &RankMethod,
+        weights: &[f64],
+    ) -> Option<Result<Vec<(I, f64)>, FuseError>> {
+        let f = match method {
+            RankMethod::Condorcet => crate::pairwise::condorcet::<I>,
+            RankMethod::Copeland => crate::pairwise::copeland::<I>,
+            RankMethod::MedianRank => crate::pairwise::median_rank::<I>,
+            _ => return None,
+        };
+        for (list, ranked) in lists.iter().enumerate() {
+            if let Err(e) = check_ranked(list, &ranked.items) {
+                return Some(Err(e));
+            }
+        }
+        let slices: Vec<&[I]> = lists.iter().map(|l| l.items.as_slice()).collect();
+        Some(Ok(f(&slices, weights)))
     }
 }
 
@@ -211,14 +314,37 @@ impl<I: Clone + Eq + Hash> Source<I> for Scored<I> {
 
     fn contributions(
         lists: &[Self],
-        _: &ScoreMethod,
+        method: &ScoreMethod,
         weights: &[f64],
     ) -> Result<Vec<Vec<(I, f64)>>, FuseError> {
+        if let ScoreMethod::Standardized { clip_min, clip_max } = *method {
+            for (parameter, value) in [("clip_min", clip_min), ("clip_max", clip_max)] {
+                if !value.is_finite() {
+                    return Err(FuseError::InvalidConfig { parameter, value });
+                }
+            }
+            if clip_min > clip_max {
+                return Err(FuseError::InvalidConfig {
+                    parameter: "clip_min",
+                    value: clip_min,
+                });
+            }
+        }
         let mut out = Vec::with_capacity(lists.len());
         for (list, scored) in lists.iter().enumerate() {
             let checked = check_scored(list, &scored.items)?;
             let scores: Vec<f64> = checked.iter().map(|x| x.1).collect();
-            let norm = min_max(list, &scores)?;
+            let norm = match method {
+                ScoreMethod::CombMax
+                | ScoreMethod::CombMin
+                | ScoreMethod::CombMed
+                | ScoreMethod::CombAnz => scores.clone(),
+                ScoreMethod::Dbsf => dbsf(list, &scores)?,
+                ScoreMethod::Standardized { clip_min, clip_max } => {
+                    standardize(list, &scores, *clip_min, *clip_max)?
+                }
+                _ => min_max(list, &scores)?,
+            };
             let w = weights[list];
             out.push(
                 checked
@@ -231,15 +357,61 @@ impl<I: Clone + Eq + Hash> Source<I> for Scored<I> {
         Ok(out)
     }
 
-    fn finish(method: &ScoreMethod, sum: f64, lists_containing: usize) -> f64 {
+    fn finish(method: &ScoreMethod, contributions: &[f64]) -> f64 {
         match method {
-            ScoreMethod::CombMnz => sum * lists_containing as f64,
-            _ => sum,
+            ScoreMethod::CombMnz => sum_in_order(contributions) * contributions.len() as f64,
+            ScoreMethod::CombMax => contributions
+                .iter()
+                .copied()
+                .fold(f64::NEG_INFINITY, f64::max),
+            ScoreMethod::CombMin => contributions.iter().copied().fold(f64::INFINITY, f64::min),
+            ScoreMethod::CombMed => median(contributions),
+            ScoreMethod::CombAnz => {
+                let nonzero: Vec<f64> = contributions
+                    .iter()
+                    .copied()
+                    .filter(|&c| c != 0.0)
+                    .collect();
+                if nonzero.is_empty() {
+                    0.0
+                } else {
+                    sum_in_order(&nonzero) / nonzero.len() as f64
+                }
+            }
+            _ => sum_in_order(contributions),
         }
     }
 
     fn normalise_weights(method: &ScoreMethod) -> bool {
         matches!(method, ScoreMethod::Weighted)
+    }
+}
+
+/// Sums in the given order, starting from the first value (not from 0.0), as the pre-vector accumulator did.
+fn sum_in_order(values: &[f64]) -> f64 {
+    let mut it = values.iter().copied();
+    let first = it.next().unwrap_or(0.0);
+    it.fold(first, |acc, v| acc + v)
+}
+
+/// Median of finite values; an even count takes the midpoint of the two middle values without overflowing.
+fn median(values: &[f64]) -> f64 {
+    let mut v = values.to_vec();
+    v.sort_by(f64::total_cmp);
+    let n = v.len();
+    if n == 0 {
+        return 0.0;
+    }
+    if n % 2 == 1 {
+        return v[n / 2];
+    }
+    let (a, b) = (v[n / 2 - 1], v[n / 2]);
+    if a <= 0.0 && b >= 0.0 {
+        // opposite signs (or zero): the sum cannot overflow
+        (a + b) / 2.0
+    } else {
+        // same sign: b - a cannot overflow
+        a + (b - a) / 2.0
     }
 }
 
@@ -413,21 +585,22 @@ where
             *w /= total;
         }
     }
-    let rows = L::contributions(lists, method, &weights)?;
+    let rows = match L::global(lists, method, &weights) {
+        // one single-element row per item, so the accumulation below keeps first-appearance order
+        Some(scored) => vec![scored?],
+        None => L::contributions(lists, method, &weights)?,
+    };
 
     // Accumulate in list order, then item order; the map indexes, it never orders (D14).
     let mut index: HashMap<I, usize> = HashMap::new();
-    let mut acc: Vec<(I, f64, usize)> = Vec::new();
+    let mut acc: Vec<(I, Vec<f64>)> = Vec::new();
     for row in rows {
         for (id, c) in row {
             match index.get(&id) {
-                Some(&i) => {
-                    acc[i].1 += c;
-                    acc[i].2 += 1;
-                }
+                Some(&i) => acc[i].1.push(c),
                 None => {
                     index.insert(id.clone(), acc.len());
-                    acc.push((id, c, 1));
+                    acc.push((id, vec![c]));
                 }
             }
         }
@@ -435,15 +608,15 @@ where
 
     let conflicts: Vec<I> = acc
         .iter()
-        .filter(|(id, _, _)| options.veto.contains(id) && options.force.contains(id))
-        .map(|(id, _, _)| id.clone())
+        .filter(|(id, _)| options.veto.contains(id) && options.force.contains(id))
+        .map(|(id, _)| id.clone())
         .collect();
 
     let entries: Vec<(I, f64, bool)> = acc
         .into_iter()
-        .filter(|(id, _, _)| !options.veto.contains(id))
-        .map(|(id, sum, n)| {
-            let score = canonical_score(L::finish(method, sum, n));
+        .filter(|(id, _)| !options.veto.contains(id))
+        .map(|(id, contributions)| {
+            let score = canonical_score(L::finish(method, &contributions));
             let forced = options.force.contains(&id);
             (id, score, forced)
         })
@@ -469,4 +642,88 @@ where
         .map(|(id, score, _)| (id, score))
         .collect();
     Ok(Fused { items, conflicts })
+}
+
+// ---- wrappers (contract D1) ---------------------------------------------------------------------------------------
+//
+// Each wrapper is one call to `fuse` with default options and no logic of its own. They live in this module, not at the
+// crate root, while the old f32 functions of the same names still exist there.
+
+/// Fuses two ranked lists with reciprocal rank fusion at `k = 60`. Same as [`fuse`] with [`RankMethod::Rrf`] and default
+/// [`Options`].
+///
+/// ```
+/// use sortant::fuse::{rrf, Ranked};
+///
+/// let fused = rrf(&Ranked::new(vec!["a", "b"]), &Ranked::new(vec!["b", "c"])).unwrap();
+/// assert_eq!(fused.items[0].0, "b");
+/// ```
+///
+/// # Errors
+///
+/// [`FuseError::DuplicateId`] if an id repeats within one list.
+pub fn rrf<I: Clone + Eq + Hash>(a: &Ranked<I>, b: &Ranked<I>) -> Result<Fused<I>, FuseError> {
+    fuse(
+        &[a.clone(), b.clone()],
+        &RankMethod::Rrf { k: 60.0 },
+        &Options::new(),
+    )
+}
+
+/// Fuses two ranked lists with a Borda count. Same as [`fuse`] with [`RankMethod::Borda`] and default [`Options`].
+///
+/// # Errors
+///
+/// [`FuseError::DuplicateId`] if an id repeats within one list.
+pub fn borda<I: Clone + Eq + Hash>(a: &Ranked<I>, b: &Ranked<I>) -> Result<Fused<I>, FuseError> {
+    fuse(&[a.clone(), b.clone()], &RankMethod::Borda, &Options::new())
+}
+
+/// Fuses two scored lists by the equal-weight sum of min-max normalised scores. Same as [`fuse`] with
+/// [`ScoreMethod::Weighted`] and default [`Options`].
+///
+/// ```
+/// use sortant::fuse::{weighted, Scored};
+///
+/// let a = Scored::new(vec![("a", 3.0), ("b", 2.0), ("c", 1.0)]);
+/// let b = Scored::new(vec![("b", 9.0), ("c", 3.0)]);
+/// let fused = weighted(&a, &b).unwrap();
+/// assert_eq!(fused.items[0].0, "b");
+/// ```
+///
+/// # Errors
+///
+/// [`FuseError::NonFiniteScore`], [`FuseError::DuplicateId`] or [`FuseError::RangeOverflow`] from the lists.
+pub fn weighted<I: Clone + Eq + Hash>(a: &Scored<I>, b: &Scored<I>) -> Result<Fused<I>, FuseError> {
+    fuse(
+        &[a.clone(), b.clone()],
+        &ScoreMethod::Weighted,
+        &Options::new(),
+    )
+}
+
+/// Fuses two scored lists with CombSUM. Same as [`fuse`] with [`ScoreMethod::CombSum`] and default [`Options`].
+///
+/// # Errors
+///
+/// As [`weighted`].
+pub fn combsum<I: Clone + Eq + Hash>(a: &Scored<I>, b: &Scored<I>) -> Result<Fused<I>, FuseError> {
+    fuse(
+        &[a.clone(), b.clone()],
+        &ScoreMethod::CombSum,
+        &Options::new(),
+    )
+}
+
+/// Fuses two scored lists with CombMNZ. Same as [`fuse`] with [`ScoreMethod::CombMnz`] and default [`Options`].
+///
+/// # Errors
+///
+/// As [`weighted`].
+pub fn combmnz<I: Clone + Eq + Hash>(a: &Scored<I>, b: &Scored<I>) -> Result<Fused<I>, FuseError> {
+    fuse(
+        &[a.clone(), b.clone()],
+        &ScoreMethod::CombMnz,
+        &Options::new(),
+    )
 }

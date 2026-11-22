@@ -62,6 +62,49 @@ fn rrf_other_k() {
 }
 
 #[test]
+fn isr_exact_values() {
+    let out = fuse(
+        &[r(&["x", "y"]), r(&["y", "z"])],
+        &RankMethod::Isr { k: 1.0 },
+        &Options::new(),
+    )
+    .unwrap();
+    // pos 0 -> 1/sqrt(1), pos 1 -> 1/sqrt(2)
+    let h = 1.0 / 2.0_f64.sqrt();
+    assert_eq!(out.items, vec![("y", 1.0 + h), ("x", 1.0), ("z", h)]);
+}
+
+#[test]
+fn isr_weighted_exact_values() {
+    let o = Options::new().weights(vec![4.0, 1.0]);
+    let out = fuse(
+        &[r(&["x"]), r(&["x", "y"])],
+        &RankMethod::Isr { k: 3.0 },
+        &o,
+    )
+    .unwrap();
+    // x: 4/sqrt(3) + 1/sqrt(3); y: 1/sqrt(4)
+    assert_eq!(
+        out.items,
+        vec![
+            ("x", 4.0 / 3.0_f64.sqrt() + 1.0 / 3.0_f64.sqrt()),
+            ("y", 0.5)
+        ]
+    );
+}
+
+#[test]
+fn bad_isr_k_is_invalid_config() {
+    for k in [0.0, -1.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        let e = fuse(&[r(&["x"])], &RankMethod::Isr { k }, &Options::new()).unwrap_err();
+        assert!(
+            matches!(e, FuseError::InvalidConfig { parameter: "k", .. }),
+            "{e:?}"
+        );
+    }
+}
+
+#[test]
 fn borda_exact_values() {
     let out = fuse(
         &[r(&["x", "y", "z"]), r(&["z", "x"])],
@@ -82,6 +125,341 @@ fn borda_weighted() {
 
 fn two_scored() -> [Scored<&'static str>; 2] {
     [s(&[("x", 10.0), ("y", 0.0)]), s(&[("y", 5.0), ("z", 1.0)])]
+}
+
+#[test]
+fn dbsf_exact_values() {
+    // list 1: mean 2, population std 1 -> z = +1, -1. list 2: both 9 -> constant -> 0.5 each.
+    let out = fuse(
+        &[s(&[("x", 3.0), ("y", 1.0)]), s(&[("y", 9.0), ("z", 9.0)])],
+        &ScoreMethod::Dbsf,
+        &Options::new(),
+    )
+    .unwrap();
+    let hi = 1.0 / 6.0 + 0.5;
+    let lo = -1.0 / 6.0 + 0.5;
+    assert_eq!(out.items, vec![("y", lo + 0.5), ("x", hi), ("z", 0.5)]);
+}
+
+#[test]
+fn dbsf_clamps_outliers_to_three_sigma() {
+    let mut v: Vec<(String, f64)> = (0..10).map(|i| (format!("a{i}"), 0.0)).collect();
+    v.push(("big".to_string(), 100.0));
+    // the outlier's z is sqrt(10) > 3, so it clamps to exactly 3 / 6 + 0.5 = 1
+    let out = fuse(&[Scored::new(v)], &ScoreMethod::Dbsf, &Options::new()).unwrap();
+    assert_eq!(out.items[0], ("big".to_string(), 1.0));
+}
+
+#[test]
+fn dbsf_overflow_is_range_overflow() {
+    let e = fuse(
+        &[s(&[("x", f64::MAX), ("y", f64::MAX)])],
+        &ScoreMethod::Dbsf,
+        &Options::new(),
+    )
+    .unwrap_err();
+    assert_eq!(e, FuseError::RangeOverflow { list: 0 });
+}
+
+#[test]
+fn dbsf_variance_overflow_with_finite_mean_is_range_overflow() {
+    // mean 0 is finite, but the squared deviations overflow, so the std is infinite
+    let e = fuse(
+        &[s(&[("x", f64::MAX), ("y", -f64::MAX)])],
+        &ScoreMethod::Dbsf,
+        &Options::new(),
+    )
+    .unwrap_err();
+    assert_eq!(e, FuseError::RangeOverflow { list: 0 });
+}
+
+const STD3: ScoreMethod = ScoreMethod::Standardized {
+    clip_min: -3.0,
+    clip_max: 3.0,
+};
+
+#[test]
+fn standardized_exact_values() {
+    // list 1: mean 2, std 1 -> z = +1, -1. list 2: constant -> 0 each.
+    let out = fuse(
+        &[s(&[("x", 3.0), ("y", 1.0)]), s(&[("y", 9.0), ("z", 9.0)])],
+        &STD3,
+        &Options::new(),
+    )
+    .unwrap();
+    assert_eq!(out.items, vec![("x", 1.0), ("z", 0.0), ("y", -1.0)]);
+}
+
+#[test]
+fn standardized_clips_to_the_given_range() {
+    let m = ScoreMethod::Standardized {
+        clip_min: -0.5,
+        clip_max: 0.5,
+    };
+    let out = fuse(&[s(&[("x", 3.0), ("y", 1.0)])], &m, &Options::new()).unwrap();
+    assert_eq!(out.items, vec![("x", 0.5), ("y", -0.5)]);
+}
+
+#[test]
+fn bad_standardized_clip_is_invalid_config_not_a_panic() {
+    let cases = [
+        (f64::NAN, 1.0, "clip_min"),
+        (f64::NEG_INFINITY, 1.0, "clip_min"),
+        (0.0, f64::NAN, "clip_max"),
+        (0.0, f64::INFINITY, "clip_max"),
+        (2.0, 1.0, "clip_min"),
+    ];
+    for (clip_min, clip_max, want) in cases {
+        let m = ScoreMethod::Standardized { clip_min, clip_max };
+        let e = fuse(&[s(&[("x", 1.0), ("y", 2.0)])], &m, &Options::new()).unwrap_err();
+        match e {
+            FuseError::InvalidConfig { parameter, .. } => assert_eq!(parameter, want),
+            other => panic!("unexpected {other:?}"),
+        }
+    }
+}
+
+#[test]
+fn standardized_equal_clip_bounds_are_allowed() {
+    let m = ScoreMethod::Standardized {
+        clip_min: 1.0,
+        clip_max: 1.0,
+    };
+    let out = fuse(&[s(&[("x", 3.0), ("y", 1.0)])], &m, &Options::new()).unwrap();
+    assert_eq!(out.items, vec![("x", 1.0), ("y", 1.0)]);
+}
+
+#[test]
+fn additive_multi_task_is_weighted_combsum_or_standardized_for_any_list_count() {
+    // ResFlow-style weights (1, 20, 0.5) over three lists; rankops ignores weights beyond two lists.
+    let lists = [
+        s(&[("x", 1.0), ("y", 0.0)]),
+        s(&[("x", 0.0), ("y", 1.0)]),
+        s(&[("x", 5.0), ("y", 0.0)]),
+    ];
+    let o = Options::new().weights(vec![1.0, 20.0, 0.5]);
+    let out = fuse(&lists, &ScoreMethod::CombSum, &o).unwrap();
+    assert_eq!(out.items, vec![("y", 20.0), ("x", 1.5)]);
+    let out = fuse(&lists, &STD3, &o).unwrap();
+    // each list has mean 0.5 (or 2.5) and std 0.5 (or 2.5): z = +-1
+    assert_eq!(
+        out.items,
+        vec![("y", 20.0 - 1.0 - 0.5), ("x", 1.0 - 20.0 + 0.5)]
+    );
+}
+
+fn three_raw() -> [Scored<&'static str>; 3] {
+    [
+        s(&[("x", 4.0), ("y", -2.0)]),
+        s(&[("x", 1.0), ("y", 0.0), ("z", 0.0)]),
+        s(&[("x", 7.0), ("y", 6.0)]),
+    ]
+}
+
+#[test]
+fn combmax_and_combmin_use_raw_scores() {
+    let max = fuse(&three_raw(), &ScoreMethod::CombMax, &Options::new()).unwrap();
+    assert_eq!(max.items, vec![("x", 7.0), ("y", 6.0), ("z", 0.0)]);
+    let min = fuse(&three_raw(), &ScoreMethod::CombMin, &Options::new()).unwrap();
+    assert_eq!(min.items, vec![("x", 1.0), ("z", 0.0), ("y", -2.0)]);
+}
+
+#[test]
+fn combmax_and_combmin_apply_list_weights() {
+    let o = Options::new().weights(vec![2.0, 1.0, 1.0]);
+    let max = fuse(&three_raw(), &ScoreMethod::CombMax, &o).unwrap();
+    assert_eq!(max.items, vec![("x", 8.0), ("y", 6.0), ("z", 0.0)]);
+    let min = fuse(&three_raw(), &ScoreMethod::CombMin, &o).unwrap();
+    assert_eq!(min.items, vec![("x", 1.0), ("z", 0.0), ("y", -4.0)]);
+}
+
+#[test]
+fn combmed_odd_count_ties_and_even_midpoint() {
+    let out = fuse(&three_raw(), &ScoreMethod::CombMed, &Options::new()).unwrap();
+    // x: median of 4,1,7 = 4; y: median of -2,0,6 = 0; z: 0 (ties keep input order)
+    assert_eq!(out.items, vec![("x", 4.0), ("y", 0.0), ("z", 0.0)]);
+    let out = fuse(
+        &[s(&[("x", 1.0)]), s(&[("x", 3.0)])],
+        &ScoreMethod::CombMed,
+        &Options::new(),
+    )
+    .unwrap();
+    assert_eq!(out.items, vec![("x", 2.0)]);
+}
+
+#[test]
+fn combmed_even_midpoint_never_overflows() {
+    let both = |a: f64, b: f64| {
+        fuse(
+            &[s(&[("x", a)]), s(&[("x", b)])],
+            &ScoreMethod::CombMed,
+            &Options::new(),
+        )
+        .unwrap()
+        .items[0]
+            .1
+    };
+    assert_eq!(both(f64::MAX, f64::MAX), f64::MAX);
+    assert_eq!(both(-f64::MAX, -f64::MAX), -f64::MAX);
+    assert_eq!(both(f64::MAX, -f64::MAX), 0.0);
+    assert_eq!(both(-1.0, 3.0), 1.0);
+    assert_eq!(both(-3.0, 0.0), -1.5);
+    assert_eq!(both(0.0, 3.0), 1.5);
+    assert_eq!(both(2.0, 6.0), 4.0);
+}
+
+#[test]
+fn combanz_averages_only_non_zero_scores() {
+    let out = fuse(&three_raw(), &ScoreMethod::CombAnz, &Options::new()).unwrap();
+    // x: (4+1+7)/3 = 4; y: non-zero -2 and 6 -> 2; z: only a zero -> 0
+    assert_eq!(out.items, vec![("x", 4.0), ("y", 2.0), ("z", 0.0)]);
+}
+
+#[test]
+fn rbc_exact_values() {
+    let m = RankMethod::Rbc { persistence: 0.5 };
+    let out = fuse(&[r(&["x", "y"]), r(&["y", "z"])], &m, &Options::new()).unwrap();
+    // pos 0 -> 0.5, pos 1 -> 0.25
+    assert_eq!(out.items, vec![("y", 0.75), ("x", 0.5), ("z", 0.25)]);
+    let o = Options::new().weights(vec![2.0, 1.0]);
+    let out = fuse(&[r(&["x", "y"]), r(&["y"])], &m, &o).unwrap();
+    assert_eq!(
+        out.items,
+        vec![("x", 1.0), ("y", 0.5 + 0.5)]
+            .into_iter()
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn rbc_golden_bit_patterns_at_ranks_0_1_100_1000() {
+    // Produced by the documented recurrence in IEEE-754 double arithmetic outside Rust (Python floats):
+    // w = 1; at each rank c = w * (1 - 0.8); w = w * 0.8.
+    let m = RankMethod::Rbc { persistence: 0.8 };
+    let list = Ranked::new((0..1001_u32).collect::<Vec<_>>());
+    let out = fuse(&[list], &m, &Options::new()).unwrap();
+    let score = |id: u32| out.items.iter().find(|x| x.0 == id).unwrap().1.to_bits();
+    assert_eq!(score(0), 0x3fc9999999999998);
+    assert_eq!(score(1), 0x3fc47ae147ae147a);
+    assert_eq!(score(100), 0x3dc665bf1d3e6ab1);
+    assert_eq!(score(1000), 0x2baae88381bb546b);
+}
+
+#[test]
+fn bad_rbc_persistence_is_invalid_config() {
+    for p in [
+        0.0,
+        1.0,
+        -0.5,
+        1.5,
+        f64::NAN,
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+    ] {
+        let e = fuse(
+            &[r(&["x"])],
+            &RankMethod::Rbc { persistence: p },
+            &Options::new(),
+        )
+        .unwrap_err();
+        assert!(
+            matches!(
+                e,
+                FuseError::InvalidConfig {
+                    parameter: "persistence",
+                    ..
+                }
+            ),
+            "{e:?}"
+        );
+    }
+}
+
+fn three_ranked() -> [Ranked<&'static str>; 3] {
+    [r(&["x", "y", "z"]), r(&["y", "x"]), r(&["x", "z"])]
+}
+
+#[test]
+fn condorcet_exact_values() {
+    let out = fuse(&three_ranked(), &RankMethod::Condorcet, &Options::new()).unwrap();
+    assert_eq!(out.items, vec![("x", 2.0), ("y", 1.0), ("z", 0.0)]);
+}
+
+#[test]
+fn copeland_exact_values() {
+    let out = fuse(&three_ranked(), &RankMethod::Copeland, &Options::new()).unwrap();
+    assert_eq!(out.items, vec![("x", 2.0), ("y", 0.0), ("z", -2.0)]);
+}
+
+#[test]
+fn median_rank_exact_values() {
+    // penalty position = longest list (3) + 1 = 4
+    let out = fuse(&three_ranked(), &RankMethod::MedianRank, &Options::new()).unwrap();
+    assert_eq!(out.items, vec![("x", 1.0), ("y", 0.5), ("z", 1.0 / 3.0)]);
+}
+
+#[test]
+fn median_rank_even_count_takes_the_midpoint() {
+    let out = fuse(
+        &[r(&["x"]), r(&["a", "b", "x"])],
+        &RankMethod::MedianRank,
+        &Options::new(),
+    )
+    .unwrap();
+    // x at positions 0 and 2 -> median 1; a at 0 and the penalty 4 -> 2; b at 1 and 4 -> 2.5
+    assert_eq!(
+        out.items,
+        vec![("x", 0.5), ("a", 1.0 / 3.0), ("b", 1.0 / 3.5)]
+    );
+}
+
+#[test]
+fn pairwise_methods_honour_weights() {
+    fn c(
+        lists: &[Ranked<&'static str>],
+        m: &RankMethod,
+        o: &Options<&'static str>,
+    ) -> Vec<(&'static str, f64)> {
+        fuse(lists, m, o).unwrap().items
+    }
+    let lists = [r(&["a", "b"]), r(&["b", "a"])];
+    let unit = Options::new();
+    let heavy = Options::new().weights(vec![3.0, 1.0]);
+    assert_eq!(
+        c(&lists, &RankMethod::Condorcet, &unit),
+        vec![("a", 0.0), ("b", 0.0)]
+    );
+    assert_eq!(
+        c(&lists, &RankMethod::Condorcet, &heavy),
+        vec![("a", 1.0), ("b", 0.0)]
+    );
+    assert_eq!(
+        c(&lists, &RankMethod::Copeland, &unit),
+        vec![("a", 0.0), ("b", 0.0)]
+    );
+    assert_eq!(
+        c(&lists, &RankMethod::Copeland, &heavy),
+        vec![("a", 1.0), ("b", -1.0)]
+    );
+    // median: a is at 0 (weight 3) and 1 (weight 1) -> 0; b is at 0 (weight 1) and 1 (weight 3) -> 1
+    assert_eq!(
+        c(&lists, &RankMethod::MedianRank, &heavy),
+        vec![("a", 1.0), ("b", 0.5)]
+    );
+}
+
+#[test]
+fn pairwise_methods_reject_duplicates_and_bad_weights() {
+    for m in [
+        RankMethod::Condorcet,
+        RankMethod::Copeland,
+        RankMethod::MedianRank,
+    ] {
+        let e = fuse(&[r(&["a", "a"])], &m, &Options::new()).unwrap_err();
+        assert!(matches!(e, FuseError::DuplicateId { .. }), "{e:?}");
+        let e = fuse(&[r(&["a"])], &m, &Options::new().weights(vec![1.0, 2.0])).unwrap_err();
+        assert!(matches!(e, FuseError::LengthMismatch { .. }), "{e:?}");
+    }
 }
 
 #[test]
@@ -502,7 +880,7 @@ fn golden_cases_hold_the_contract_invariants() {
     ];
     for g in golden {
         let lists: Vec<Ranked<u8>> = g.iter().cloned().map(Ranked::new).collect();
-        for m in [RRF, RankMethod::Borda] {
+        for m in [RRF, RankMethod::Borda, RankMethod::Isr { k: 1.0 }] {
             let out = fuse(&lists, &m, &Options::new()).unwrap();
             let mut got = ids(&out);
             got.sort_unstable();
@@ -529,7 +907,7 @@ proptest! {
     #[test]
     fn rank_fusion_is_total_sorted_and_a_union(g in arb_ranked(), top in prop::option::of(0usize..15)) {
         let lists: Vec<Ranked<u8>> = g.iter().cloned().map(Ranked::new).collect();
-        for m in [RRF, RankMethod::Borda] {
+        for m in [RRF, RankMethod::Borda, RankMethod::Isr { k: 1.0 }] {
             let base = fuse(&lists, &m, &Options::new()).unwrap();
             let mut got = ids(&base);
             got.sort_unstable();
@@ -570,4 +948,42 @@ proptest! {
         let b = fuse(&lists, &RRF, &Options::new()).unwrap();
         prop_assert_eq!(a, b);
     }
+}
+
+// ---- wrappers: each must equal the matching `fuse` call exactly -----------------------------------------------------
+
+#[test]
+fn wrappers_equal_fuse() {
+    use crate::fuse::{borda, combmnz, combsum, rrf, weighted};
+    let (ra, rb) = (r(&["x", "y", "w"]), r(&["y", "z"]));
+    let (sa, sb) = (
+        s(&[("x", 3.0), ("y", 2.0), ("w", 1.0)]),
+        s(&[("y", 5.0), ("z", 1.0)]),
+    );
+    let o = Options::new();
+    assert_eq!(rrf(&ra, &rb), fuse(&[ra.clone(), rb.clone()], &RRF, &o));
+    assert_eq!(
+        borda(&ra, &rb),
+        fuse(&[ra.clone(), rb.clone()], &RankMethod::Borda, &o)
+    );
+    for (got, m) in [
+        (weighted(&sa, &sb), ScoreMethod::Weighted),
+        (combsum(&sa, &sb), ScoreMethod::CombSum),
+        (combmnz(&sa, &sb), ScoreMethod::CombMnz),
+    ] {
+        assert_eq!(got, fuse(&[sa.clone(), sb.clone()], &m, &o));
+    }
+}
+
+#[test]
+fn wrappers_report_errors() {
+    use crate::fuse::{rrf, weighted};
+    assert!(matches!(
+        rrf(&r(&["a", "a"]), &r(&["b"])),
+        Err(FuseError::DuplicateId { .. })
+    ));
+    assert!(matches!(
+        weighted(&s(&[("a", f64::NAN)]), &s(&[("b", 1.0)])),
+        Err(FuseError::NonFiniteScore { .. })
+    ));
 }

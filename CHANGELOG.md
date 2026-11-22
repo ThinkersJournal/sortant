@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0 (Stage 2 methods; **Breaking** for 0.0.6 callers: `ScoreMethod` lost `Eq`, sealed `Source::finish` changed; pre-1.0 second number; allocated by pm-assist 2026-11-22 per pm-ants)
+
+- Wrappers and Stage 2 fusion methods: ISR, DBSF, Standardized, CombMAX/MIN/MED/ANZ, RBC, Condorcet, Copeland, MedianRank. Decisions to confirm (ISR formula, MedianRank penalty) are in the PR body.
+
 ## 0.0.6 (Stage 1: `fuse`; additive; allocated by pm-assist 2026-11-21)
 
 - New `sortant::fuse` module, the single entry point (contract D1): `fuse(lists, &method, &Options) -> Result<Fused, FuseError>`.
