@@ -54,3 +54,10 @@ re-run after the fix, which touched only a test.
 (2026-11-21), run before the AdditiveMultiTask test was added (that commit changed only a test and CONTRACT.md):
 184 mutants, **144 caught, 38 unviable, 2 missed, 0 timeouts**. The 2 missed are the `min_max` `<` -> `<=` and
 `>` -> `>=` mutants, equivalent and already read in the step 4 table. No new gap.
+
+## Stage 2: CombMAX/MIN/MED/ANZ (`src/fuse.rs`)
+
+`cargo-mutants 27.1.0`, `cargo mutants --file src/fuse.rs --no-shuffle -j3`, branch `wrappers` at `2991e87`
+(2026-11-21): 154 mutants, **114 caught, 38 unviable, 0 missed, 2 timeouts**. The timeouts are both
+`Ranked::contributions` replaced by `Ok(vec![])` / `Ok(vec![vec![]])`; a timeout counts as detected, but I did not
+find out why those two hang instead of failing, so the cause is unread.
