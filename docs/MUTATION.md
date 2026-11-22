@@ -31,3 +31,10 @@ First run: 90 mutants, 70 caught, 18 unviable, **2 missed**:
 Re-run after both changes: 87 mutants, **69 caught, 18 unviable, 0 missed**. The unviable ones are mutants that do not
 compile (return-type replacements on generic items). The differential tests are part of what kills the arithmetic
 mutants (Borda `n - pos`, RRF rank offset); they are not a separate check.
+
+## Stage 2: ISR (`src/fuse.rs`)
+
+`cargo-mutants 27.1.0`, `cargo mutants --file src/fuse.rs --no-shuffle -j3`, branch `wrappers` at `833898a` (2026-11-21):
+75 mutants, **61 caught, 14 unviable, 0 missed, 0 timeouts**. The count is lower than Stage 1's 87 and was not
+investigated; the zero-missed result stands for the file as it is at this ref. The ISR arithmetic (`k + pos`, `sqrt`,
+weight) is killed by the exact-value tests and `isr_agrees`.
