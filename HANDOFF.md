@@ -6,22 +6,23 @@ Charter (PM-written, outside the repo): `C:\Projects\.lane-state\newlane\sortant
 Origin pins, rules and the defect list: `PROVENANCE.md`, `NOTICE`, `docs/CONTRACT.md` (decisions D1-D17 plus
 amendments A1-A4, all approved by the PM; they are the spec, do not re-derive them).
 
-## State (2026-11-21; cluster PM = pm-ants; [READY] goes to pm-assist cc pm-ants)
-- main = `d438d93`, version 0.0.6. Stage 1 merged (sortant#6): `src/fuse.rs`, `src/fuse_tests.rs`, `tests/differential.rs`
-  (dev-dep `rankops =0.3.0`), mutation entry in `docs/MUTATION.md`. Branch `stage1-methods` and its worktree are gone.
-- Working branch `wrappers` (worktree `C:\Projects\sortant-wt-wrappers`), pushed, head `490527e`: wrappers `rrf/borda/weighted/combsum/combmnz`
-  in `sortant::fuse` (root f32 names still exist), `examples/fuse_two_lists.rs`; all tests and clippy pass. No PR yet:
-  open ONE PR (`[READY]` to pm-assist cc pm-ants) at/after 2026-11-22 00:00Z; pm-ants wakes this lane by mail at 00:02Z.
-  The window never stops work: keep committing on this branch.
-- The old f32 API in `src/lib.rs` still exists; it goes as each method's stage lands (not yet).
-- No WAIT lines. Lane soft-stopped 2026-11-21 (CPU load, pm-ants).
+## State (2026-11-22; cluster PM = pm-ants; [READY] goes to pm-assist cc pm-ants)
+- main = `d438d93`, version 0.0.6. Branch `wrappers` (worktree `C:\Projects\sortant-wt-wrappers`), pushed: wrappers
+  `rrf/borda/weighted/combsum/combmnz` + example, and Stage 2 through `fuse`: ISR, DBSF, Standardized, CombMAX/MIN/MED/ANZ,
+  RBC, Condorcet, Copeland, MedianRank (`src/pairwise.rs`); AdditiveMultiTask decided as weighted CombSum/Standardized (no
+  variant). Each has exact tests, a differential test against rankops where correct, and a `docs/MUTATION.md` entry.
+  Breaking vs 0.0.6: `ScoreMethod` lost `Eq`; `Source::finish` signature changed (sealed trait).
+- PR for `wrappers` opened 2026-11-22 (see `gh pr list --head wrappers`); keep working on the branch until it merges, then
+  delete branch and worktree and start a fresh one.
+- The old f32 API in `src/lib.rs` still exists; remove it once all methods are in (they now are): its own PR step.
+- No WAIT lines.
 
 ## Next (in order)
-1. Open the wrappers PR when woken (see above).
-2. Stage 2 methods per the CONTRACT section 6 table: ISR, DBSF, Standardized, AdditiveMultiTask, CombMAX/MIN/MED/ANZ, RBC (A4),
-   then Condorcet/Copeland, MedianRank; each with exact tests, golden properties, mutation entry, differential where correct.
-   Add each as a `RankMethod`/`ScoreMethod` variant through `fuse`.
-3. Row 6 patent sweep.
+1. Check the `wrappers` PR (threads, checks) and answer findings.
+2. Wrappers for the other methods (D1) if wanted; remove the old f32 API per CONTRACT.
+3. `PROVENANCE.md` rows for `src/fuse.rs`, `src/norm.rs`, `src/input.rs` etc. if they derive from rankops (only
+   `src/pairwise.rs` has one; check each).
+4. Row 6 patent sweep.
 
 ## Decisions (contract note, all PM-approved; detail in `docs/CONTRACT.md`)
 D1 one `fuse` entry + logic-free wrappers. D2 zero deps, forbid unsafe. D3 id is `Clone+Eq+Hash`, never orders. D4 `Ranked` vs
