@@ -64,6 +64,15 @@ fn scored_lists() -> impl Strategy<Value = Vec<Vec<(u8, f64)>>> {
     )
 }
 
+fn nonzero_lists() -> impl Strategy<Value = Vec<Vec<(u8, f64)>>> {
+    // CombANZ differs from rankops only on zero scores (contract section 6), so the comparison excludes zeros.
+    scored_lists().prop_map(|g| {
+        g.into_iter()
+            .map(|l| l.into_iter().filter(|x| x.1 != 0.0).collect())
+            .collect()
+    })
+}
+
 fn as_rank(g: &[Vec<u8>]) -> Vec<Vec<(u8, f32)>> {
     g.iter()
         .map(|l| l.iter().map(|&i| (i, 0.0)).collect())
@@ -115,6 +124,38 @@ proptest! {
         let m = ScoreMethod::Standardized { clip_min: -3.0, clip_max: 3.0 };
         let ours = fuse(&lists, &m, &Options::new()).unwrap();
         let theirs = rankops::standardized_multi(&as_f32(&g), rankops::StandardizedConfig::default());
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
+    fn combmax_agrees(g in scored_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Scored::new).collect();
+        let ours = fuse(&lists, &ScoreMethod::CombMax, &Options::new()).unwrap();
+        let theirs = rankops::combmax_multi(&as_f32(&g), rankops::FusionConfig::default());
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
+    fn combmin_agrees(g in scored_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Scored::new).collect();
+        let ours = fuse(&lists, &ScoreMethod::CombMin, &Options::new()).unwrap();
+        let theirs = rankops::combmin_multi(&as_f32(&g), rankops::FusionConfig::default());
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
+    fn combmed_agrees(g in scored_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Scored::new).collect();
+        let ours = fuse(&lists, &ScoreMethod::CombMed, &Options::new()).unwrap();
+        let theirs = rankops::combmed_multi(&as_f32(&g), rankops::FusionConfig::default());
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
+    fn combanz_agrees(g in nonzero_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Scored::new).collect();
+        let ours = fuse(&lists, &ScoreMethod::CombAnz, &Options::new()).unwrap();
+        let theirs = rankops::combanz_multi(&as_f32(&g), rankops::FusionConfig::default());
         agree(&ours.items, &theirs)?;
     }
 

@@ -248,6 +248,73 @@ fn additive_multi_task_is_weighted_combsum_or_standardized_for_any_list_count() 
     );
 }
 
+fn three_raw() -> [Scored<&'static str>; 3] {
+    [
+        s(&[("x", 4.0), ("y", -2.0)]),
+        s(&[("x", 1.0), ("y", 0.0), ("z", 0.0)]),
+        s(&[("x", 7.0), ("y", 6.0)]),
+    ]
+}
+
+#[test]
+fn combmax_and_combmin_use_raw_scores() {
+    let max = fuse(&three_raw(), &ScoreMethod::CombMax, &Options::new()).unwrap();
+    assert_eq!(max.items, vec![("x", 7.0), ("y", 6.0), ("z", 0.0)]);
+    let min = fuse(&three_raw(), &ScoreMethod::CombMin, &Options::new()).unwrap();
+    assert_eq!(min.items, vec![("x", 1.0), ("z", 0.0), ("y", -2.0)]);
+}
+
+#[test]
+fn combmax_and_combmin_apply_list_weights() {
+    let o = Options::new().weights(vec![2.0, 1.0, 1.0]);
+    let max = fuse(&three_raw(), &ScoreMethod::CombMax, &o).unwrap();
+    assert_eq!(max.items, vec![("x", 8.0), ("y", 6.0), ("z", 0.0)]);
+    let min = fuse(&three_raw(), &ScoreMethod::CombMin, &o).unwrap();
+    assert_eq!(min.items, vec![("x", 1.0), ("z", 0.0), ("y", -4.0)]);
+}
+
+#[test]
+fn combmed_odd_count_ties_and_even_midpoint() {
+    let out = fuse(&three_raw(), &ScoreMethod::CombMed, &Options::new()).unwrap();
+    // x: median of 4,1,7 = 4; y: median of -2,0,6 = 0; z: 0 (ties keep input order)
+    assert_eq!(out.items, vec![("x", 4.0), ("y", 0.0), ("z", 0.0)]);
+    let out = fuse(
+        &[s(&[("x", 1.0)]), s(&[("x", 3.0)])],
+        &ScoreMethod::CombMed,
+        &Options::new(),
+    )
+    .unwrap();
+    assert_eq!(out.items, vec![("x", 2.0)]);
+}
+
+#[test]
+fn combmed_even_midpoint_never_overflows() {
+    let both = |a: f64, b: f64| {
+        fuse(
+            &[s(&[("x", a)]), s(&[("x", b)])],
+            &ScoreMethod::CombMed,
+            &Options::new(),
+        )
+        .unwrap()
+        .items[0]
+            .1
+    };
+    assert_eq!(both(f64::MAX, f64::MAX), f64::MAX);
+    assert_eq!(both(-f64::MAX, -f64::MAX), -f64::MAX);
+    assert_eq!(both(f64::MAX, -f64::MAX), 0.0);
+    assert_eq!(both(-1.0, 3.0), 1.0);
+    assert_eq!(both(-3.0, 0.0), -1.5);
+    assert_eq!(both(0.0, 3.0), 1.5);
+    assert_eq!(both(2.0, 6.0), 4.0);
+}
+
+#[test]
+fn combanz_averages_only_non_zero_scores() {
+    let out = fuse(&three_raw(), &ScoreMethod::CombAnz, &Options::new()).unwrap();
+    // x: (4+1+7)/3 = 4; y: non-zero -2 and 6 -> 2; z: only a zero -> 0
+    assert_eq!(out.items, vec![("x", 4.0), ("y", 2.0), ("z", 0.0)]);
+}
+
 #[test]
 fn combsum_exact_values_and_input_order_ties() {
     let out = fuse(&two_scored(), &ScoreMethod::CombSum, &Options::new()).unwrap();

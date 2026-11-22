@@ -126,7 +126,7 @@ pub enum RankMethod {
     },
 }
 
-/// Methods that read scores in [`Scored`] lists. Every method but `Dbsf` and `Standardized` min-max normalises each list first (contract D16, D17:
+/// Methods that read scores in [`Scored`] lists. Every method but `Dbsf`, `Standardized` and the raw `CombMax/Min/Med/Anz` min-max normalises each list first (contract D16, D17:
 /// a constant list normalises to 0.5, a range that overflows is [`FuseError::RangeOverflow`]); absent items get 0.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
@@ -152,6 +152,17 @@ pub enum ScoreMethod {
         /// Upper clip bound.
         clip_max: f64,
     },
+    /// Highest score an item has in any list that contains it. Raw scores, no normalisation (as in rankops), each
+    /// multiplied by its list's weight.
+    CombMax,
+    /// Lowest score an item has in any list that contains it. Raw scores times the list weight.
+    CombMin,
+    /// Median of an item's scores over the lists that contain it; an even count takes the midpoint of the two middle
+    /// values. Raw scores times the list weight.
+    CombMed,
+    /// Mean of an item's non-zero scores over the lists that contain it (the published CombANZ; rankops averages all
+    /// present scores, contract section 6). An item whose scores are all zero gets 0. Raw scores times the list weight.
+    CombAnz,
 }
 
 mod sealed {
@@ -171,7 +182,8 @@ pub trait Source<I>: sealed::Sealed + Sized {
     ) -> Result<Vec<Vec<(I, f64)>>, FuseError>;
 
     #[doc(hidden)]
-    fn finish(method: &Self::Method, sum: f64, lists_containing: usize) -> f64;
+    /// Combines one id's contributions, in list order, into its fused score.
+    fn finish(method: &Self::Method, contributions: &[f64]) -> f64;
 
     #[doc(hidden)]
     fn normalise_weights(method: &Self::Method) -> bool;
@@ -220,8 +232,8 @@ impl<I: Clone + Eq + Hash> Source<I> for Ranked<I> {
         Ok(out)
     }
 
-    fn finish(_: &RankMethod, sum: f64, _: usize) -> f64 {
-        sum
+    fn finish(_: &RankMethod, contributions: &[f64]) -> f64 {
+        sum_in_order(contributions)
     }
 
     fn normalise_weights(_: &RankMethod) -> bool {
@@ -255,6 +267,10 @@ impl<I: Clone + Eq + Hash> Source<I> for Scored<I> {
             let checked = check_scored(list, &scored.items)?;
             let scores: Vec<f64> = checked.iter().map(|x| x.1).collect();
             let norm = match method {
+                ScoreMethod::CombMax
+                | ScoreMethod::CombMin
+                | ScoreMethod::CombMed
+                | ScoreMethod::CombAnz => scores.clone(),
                 ScoreMethod::Dbsf => dbsf(list, &scores)?,
                 ScoreMethod::Standardized { clip_min, clip_max } => {
                     standardize(list, &scores, *clip_min, *clip_max)?
@@ -273,15 +289,61 @@ impl<I: Clone + Eq + Hash> Source<I> for Scored<I> {
         Ok(out)
     }
 
-    fn finish(method: &ScoreMethod, sum: f64, lists_containing: usize) -> f64 {
+    fn finish(method: &ScoreMethod, contributions: &[f64]) -> f64 {
         match method {
-            ScoreMethod::CombMnz => sum * lists_containing as f64,
-            _ => sum,
+            ScoreMethod::CombMnz => sum_in_order(contributions) * contributions.len() as f64,
+            ScoreMethod::CombMax => contributions
+                .iter()
+                .copied()
+                .fold(f64::NEG_INFINITY, f64::max),
+            ScoreMethod::CombMin => contributions.iter().copied().fold(f64::INFINITY, f64::min),
+            ScoreMethod::CombMed => median(contributions),
+            ScoreMethod::CombAnz => {
+                let nonzero: Vec<f64> = contributions
+                    .iter()
+                    .copied()
+                    .filter(|&c| c != 0.0)
+                    .collect();
+                if nonzero.is_empty() {
+                    0.0
+                } else {
+                    sum_in_order(&nonzero) / nonzero.len() as f64
+                }
+            }
+            _ => sum_in_order(contributions),
         }
     }
 
     fn normalise_weights(method: &ScoreMethod) -> bool {
         matches!(method, ScoreMethod::Weighted)
+    }
+}
+
+/// Sums in the given order, starting from the first value (not from 0.0), as the pre-vector accumulator did.
+fn sum_in_order(values: &[f64]) -> f64 {
+    let mut it = values.iter().copied();
+    let first = it.next().unwrap_or(0.0);
+    it.fold(first, |acc, v| acc + v)
+}
+
+/// Median of finite values; an even count takes the midpoint of the two middle values without overflowing.
+fn median(values: &[f64]) -> f64 {
+    let mut v = values.to_vec();
+    v.sort_by(f64::total_cmp);
+    let n = v.len();
+    if n == 0 {
+        return 0.0;
+    }
+    if n % 2 == 1 {
+        return v[n / 2];
+    }
+    let (a, b) = (v[n / 2 - 1], v[n / 2]);
+    if a <= 0.0 && b >= 0.0 {
+        // opposite signs (or zero): the sum cannot overflow
+        (a + b) / 2.0
+    } else {
+        // same sign: b - a cannot overflow
+        a + (b - a) / 2.0
     }
 }
 
@@ -459,17 +521,14 @@ where
 
     // Accumulate in list order, then item order; the map indexes, it never orders (D14).
     let mut index: HashMap<I, usize> = HashMap::new();
-    let mut acc: Vec<(I, f64, usize)> = Vec::new();
+    let mut acc: Vec<(I, Vec<f64>)> = Vec::new();
     for row in rows {
         for (id, c) in row {
             match index.get(&id) {
-                Some(&i) => {
-                    acc[i].1 += c;
-                    acc[i].2 += 1;
-                }
+                Some(&i) => acc[i].1.push(c),
                 None => {
                     index.insert(id.clone(), acc.len());
-                    acc.push((id, c, 1));
+                    acc.push((id, vec![c]));
                 }
             }
         }
@@ -477,15 +536,15 @@ where
 
     let conflicts: Vec<I> = acc
         .iter()
-        .filter(|(id, _, _)| options.veto.contains(id) && options.force.contains(id))
-        .map(|(id, _, _)| id.clone())
+        .filter(|(id, _)| options.veto.contains(id) && options.force.contains(id))
+        .map(|(id, _)| id.clone())
         .collect();
 
     let entries: Vec<(I, f64, bool)> = acc
         .into_iter()
-        .filter(|(id, _, _)| !options.veto.contains(id))
-        .map(|(id, sum, n)| {
-            let score = canonical_score(L::finish(method, sum, n));
+        .filter(|(id, _)| !options.veto.contains(id))
+        .map(|(id, contributions)| {
+            let score = canonical_score(L::finish(method, &contributions));
             let forced = options.force.contains(&id);
             (id, score, forced)
         })
