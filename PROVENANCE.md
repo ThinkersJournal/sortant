@@ -41,6 +41,19 @@ defects included) until each method is ported under `docs/CONTRACT.md` (step 4).
 | `src/pairwise.rs` | `src/lib.rs` `condorcet_multi`, `copeland_multi`, `median_rank_multi` (lines 3100-3340 in the carried copy) | reimplemented, not copied: same pairwise rules and median-rank penalty (`longest list + 1`, 0-indexed), but f64, first-appearance order instead of `HashSet` order, per-list weights (D13), no `i32`/`f32` counters; checked against rankops by `tests/differential.rs` |
 | `tests/dbsf_order.rs` | `tests/bughunt_dbsf_knapsack.rs` (the `dbsf` test and `pos` helper) | crate path renamed; the `dp_knapsack` tests dropped |
 
+### Files written new for SortAnt that follow rankops' rules
+
+These are not copies: they were written under `docs/CONTRACT.md` and carry the SortAnt copyright header. Where they
+reproduce a rankops formula (a published or textbook definition that rankops also implements), the row says which, and
+`tests/differential.rs` compares the result with rankops 0.3.0 itself.
+
+| SortAnt file | Follows rankops 0.3.0 for | Not rankops |
+|---|---|---|
+| `src/fuse.rs` | the per-method formulas of RRF, Borda, ISR (`1/sqrt(k+pos)`), RBC, CombSUM/MNZ/MAX/MIN/MED/ANZ, weighted, DBSF and Standardized (as called in `src/lib.rs`) | the single `fuse` entry, `Options`, input types, accumulation, ordering, veto/force, CombANZ meaning, validation |
+| `src/norm.rs` | the min-max, DBSF and z-score definitions | f64, exact-equality constant rule (A3), overflow error, clip validation |
+| `src/pairwise.rs` | see its row above | |
+| `src/input.rs`, `src/order.rs`, `src/sort.rs`, `src/error.rs` | nothing copied; written for the step 4 contract | recorded by the step 4 author, not re-verified in the Stage 2 PR |
+
 Not copied from rankops' `tests/`: `adaptive_mmr.rs`, `rerank_backend_contract.rs`, `trec_parity.rs`, `fixtures/`
 (all out of scope).
 
