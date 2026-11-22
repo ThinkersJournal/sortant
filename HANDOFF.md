@@ -7,22 +7,25 @@ Origin pins, rules and the defect list: `PROVENANCE.md`, `NOTICE`, `docs/CONTRAC
 amendments A1-A4, all approved by the PM; they are the spec, do not re-derive them).
 
 ## State (2026-11-22; cluster PM = pm-ants; [READY] goes to pm-assist cc pm-ants)
-- main = `d438d93`, version 0.0.6. Branch `wrappers` (worktree `C:\Projects\sortant-wt-wrappers`), pushed: wrappers
-  `rrf/borda/weighted/combsum/combmnz` + example, and Stage 2 through `fuse`: ISR, DBSF, Standardized, CombMAX/MIN/MED/ANZ,
-  RBC, Condorcet, Copeland, MedianRank (`src/pairwise.rs`); AdditiveMultiTask decided as weighted CombSum/Standardized (no
-  variant). Each has exact tests, a differential test against rankops where correct, and a `docs/MUTATION.md` entry.
-  Breaking vs 0.0.6: `ScoreMethod` lost `Eq`; `Source::finish` signature changed (sealed trait).
-- PR for `wrappers` opened 2026-11-22 (see `gh pr list --head wrappers`); keep working on the branch until it merges, then
-  delete branch and worktree and start a fresh one.
-- The old f32 API in `src/lib.rs` still exists; remove it once all methods are in (they now are): its own PR step.
+- main = `37189d0`, version 0.1.0. Stage 1 (#6) and Stage 2 (#7) merged: every method in the CONTRACT section 6 table is in
+  `sortant::fuse` (AdditiveMultiTask = weighted CombSum/Standardized, no variant); wrappers for rrf/borda/weighted/
+  combsum/combmnz only.
+- Branch `old-api-removal` (worktree `C:\Projects\sortant-wt-oldapi`), pushed, head `72f30bf`, NO PR: removes the old f32 API and
+  its derived files, ports the dbsf regression, updates README/ROADMAP/PROVENANCE/CHANGELOG (changelog heading says 0.2.0,
+  pending the gate's number). 100 unit + 20 differential + 4 doc tests pass, clippy and doc clean. Dropped with no
+  replacement: explain, analyze_consensus, attribute_top_k, output validators (CONTRACT section 6 says drop/decide).
+- One PR per day: #7 merged 2026-11-22, so open the PR for `old-api-removal` at/after 2026-11-23 00:00Z; pm-ants wakes this
+  lane by mail then. Keep committing on the branch meanwhile.
+- Patent sweep (row 6) is partial: `docs/PATENT-SWEEP.md`; claims unread (Google Patents 503).
+- Open decisions I made, awaiting any PM objection: ISR keeps rankops `1/sqrt(k+pos)`; MedianRank penalty `longest+1`
+  (0-indexed); DBSF/Standardized constant list at std <= 1e-9; two `Ranked::contributions` mutants time out (cause unread).
 - No WAIT lines.
 
 ## Next (in order)
-1. Check the `wrappers` PR (threads, checks) and answer findings.
-2. Wrappers for the other methods (D1) if wanted; remove the old f32 API per CONTRACT.
-3. `PROVENANCE.md` rows for `src/fuse.rs`, `src/norm.rs`, `src/input.rs` etc. if they derive from rankops (only
-   `src/pairwise.rs` has one; check each).
-4. Row 6 patent sweep.
+1. Open the `old-api-removal` PR when the day rolls over; `[READY]` to pm-assist cc pm-ants.
+2. Patent sweep: read claims verbatim (USPTO/Espacenet), positive controls, update `docs/PATENT-SWEEP.md`.
+3. Row 5: docs and examples that pass the ease gate; wrappers for the remaining methods only if wanted.
+4. Re-run `cargo mutants --file src/fuse.rs` after any `fuse.rs` change.
 
 ## Decisions (contract note, all PM-approved; detail in `docs/CONTRACT.md`)
 D1 one `fuse` entry + logic-free wrappers. D2 zero deps, forbid unsafe. D3 id is `Clone+Eq+Hash`, never orders. D4 `Ranked` vs
