@@ -124,6 +124,14 @@ pub enum RankMethod {
         /// The smoothing constant.
         k: f64,
     },
+    /// Rank-biased centroids: an item at 0-indexed position `pos` adds `weight * (1 - p) * p^pos`. `p` (persistence)
+    /// must be strictly between 0 and 1 ([`FuseError::InvalidConfig`] otherwise). `p^pos` is built by repeated
+    /// multiplication along the list (`w_0 = 1`, `w_{pos+1} = w_pos * p`), never `powf`/`powi`, so the result is
+    /// bit-identical on every platform (contract D14, amendment A4); the contribution is `weight * (w_pos * (1 - p))`.
+    Rbc {
+        /// The persistence `p`.
+        persistence: f64,
+    },
 }
 
 /// Methods that read scores in [`Scored`] lists. Every method but `Dbsf`, `Standardized` and the raw `CombMax/Min/Med/Anz` min-max normalises each list first (contract D16, D17:
@@ -200,6 +208,14 @@ impl<I: Clone + Eq + Hash> Source<I> for Ranked<I> {
         method: &RankMethod,
         weights: &[f64],
     ) -> Result<Vec<Vec<(I, f64)>>, FuseError> {
+        if let RankMethod::Rbc { persistence } = *method
+            && !(persistence > 0.0 && persistence < 1.0)
+        {
+            return Err(FuseError::InvalidConfig {
+                parameter: "persistence",
+                value: persistence,
+            });
+        }
         if let RankMethod::Rrf { k } | RankMethod::Isr { k } = *method
             && !(k.is_finite() && k > 0.0)
         {
@@ -213,6 +229,7 @@ impl<I: Clone + Eq + Hash> Source<I> for Ranked<I> {
             check_ranked(list, &ranked.items)?;
             let w = weights[list];
             let n = ranked.items.len();
+            let mut power = 1.0_f64; // p^pos, by repeated multiplication (Rbc only)
             let row = ranked
                 .items
                 .iter()
@@ -223,6 +240,11 @@ impl<I: Clone + Eq + Hash> Source<I> for Ranked<I> {
                         RankMethod::Rrf { k } => w / (k + (pos + 1) as f64),
                         RankMethod::Borda => w * (n - pos) as f64,
                         RankMethod::Isr { k } => w / (k + pos as f64).sqrt(),
+                        RankMethod::Rbc { persistence } => {
+                            let c = w * (power * (1.0 - persistence));
+                            power *= persistence;
+                            c
+                        }
                     };
                     (id.clone(), c)
                 })

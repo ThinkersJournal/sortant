@@ -316,6 +316,66 @@ fn combanz_averages_only_non_zero_scores() {
 }
 
 #[test]
+fn rbc_exact_values() {
+    let m = RankMethod::Rbc { persistence: 0.5 };
+    let out = fuse(&[r(&["x", "y"]), r(&["y", "z"])], &m, &Options::new()).unwrap();
+    // pos 0 -> 0.5, pos 1 -> 0.25
+    assert_eq!(out.items, vec![("y", 0.75), ("x", 0.5), ("z", 0.25)]);
+    let o = Options::new().weights(vec![2.0, 1.0]);
+    let out = fuse(&[r(&["x", "y"]), r(&["y"])], &m, &o).unwrap();
+    assert_eq!(
+        out.items,
+        vec![("x", 1.0), ("y", 0.5 + 0.5)]
+            .into_iter()
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn rbc_golden_bit_patterns_at_ranks_0_1_100_1000() {
+    // Produced by the documented recurrence in IEEE-754 double arithmetic outside Rust (Python floats):
+    // w = 1; at each rank c = w * (1 - 0.8); w = w * 0.8.
+    let m = RankMethod::Rbc { persistence: 0.8 };
+    let list = Ranked::new((0..1001_u32).collect::<Vec<_>>());
+    let out = fuse(&[list], &m, &Options::new()).unwrap();
+    let score = |id: u32| out.items.iter().find(|x| x.0 == id).unwrap().1.to_bits();
+    assert_eq!(score(0), 0x3fc9999999999998);
+    assert_eq!(score(1), 0x3fc47ae147ae147a);
+    assert_eq!(score(100), 0x3dc665bf1d3e6ab1);
+    assert_eq!(score(1000), 0x2baae88381bb546b);
+}
+
+#[test]
+fn bad_rbc_persistence_is_invalid_config() {
+    for p in [
+        0.0,
+        1.0,
+        -0.5,
+        1.5,
+        f64::NAN,
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+    ] {
+        let e = fuse(
+            &[r(&["x"])],
+            &RankMethod::Rbc { persistence: p },
+            &Options::new(),
+        )
+        .unwrap_err();
+        assert!(
+            matches!(
+                e,
+                FuseError::InvalidConfig {
+                    parameter: "persistence",
+                    ..
+                }
+            ),
+            "{e:?}"
+        );
+    }
+}
+
+#[test]
 fn combsum_exact_values_and_input_order_ties() {
     let out = fuse(&two_scored(), &ScoreMethod::CombSum, &Options::new()).unwrap();
     // normalised: x=1, y=0 | y=1, z=0  => x=1, y=1, z=0; x and y tie, x appeared first

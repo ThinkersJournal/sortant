@@ -103,6 +103,14 @@ proptest! {
     }
 
     #[test]
+    fn rbc_agrees(g in ranked_lists()) {
+        let lists: Vec<_> = g.iter().cloned().map(Ranked::new).collect();
+        let ours = fuse(&lists, &RankMethod::Rbc { persistence: 0.5 }, &Options::new()).unwrap();
+        let theirs = rankops::rbc_multi(&as_rank(&g), 0.5);
+        agree(&ours.items, &theirs)?;
+    }
+
+    #[test]
     fn borda_agrees(g in ranked_lists()) {
         let lists: Vec<_> = g.iter().cloned().map(Ranked::new).collect();
         let ours = fuse(&lists, &RankMethod::Borda, &Options::new()).unwrap();
