@@ -462,6 +462,17 @@ fn pairwise_methods_reject_duplicates_and_bad_weights() {
     }
 }
 
+/// Regression carried over from rankops' `dbsf` ordering test (see PROVENANCE.md): documents in both lists must outrank
+/// documents in one. DBSF maps each list by `(s - (mu - 3 sigma)) / (6 sigma)` and sums, so an absent item gets 0, and the
+/// expected order is d2, d3, d1, d4. Summing raw clipped z-scores would put d3 below d4.
+#[test]
+fn dbsf_ranks_documents_in_both_lists_first() {
+    let bm25 = s(&[("d1", 15.0), ("d2", 12.0), ("d3", 8.0)]);
+    let dense = s(&[("d2", 0.9), ("d3", 0.7), ("d4", 0.5)]);
+    let out = fuse(&[bm25, dense], &ScoreMethod::Dbsf, &Options::new()).unwrap();
+    assert_eq!(ids(&out), vec!["d2", "d3", "d1", "d4"]);
+}
+
 #[test]
 fn combsum_exact_values_and_input_order_ties() {
     let out = fuse(&two_scored(), &ScoreMethod::CombSum, &Options::new()).unwrap();

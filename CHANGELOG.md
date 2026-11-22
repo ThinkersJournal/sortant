@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 (old f32 API removed; **Breaking**; allocation pending at gate)
+
+- Removed the carried-over rankops f32 API at the crate root (`rrf`, `isr`, `combsum`, `FusionMethod`, the `*_multi` and
+  `*_with_config` functions, configs, `explain`, `validate` and `prelude`), its derived test files (`src/tests.rs`,
+  `src/proptests.rs`) and `src/validate.rs`, `src/fusion_order.rs`. Everything is reachable through `sortant::fuse`.
+  Dropped without a replacement (contract section 6): `explain` (`rrf_explain` etc.), `analyze_consensus`,
+  `attribute_top_k`, the output validators and Sigmoid normalisation; they return only on request.
+- The `dbsf` regression is now `fuse_tests::dbsf_ranks_documents_in_both_lists_first`. The differential tests still compare
+  every method with rankops 0.3.0 (a dev-dependency only).
+
 ## 0.1.0 (Stage 2 methods; **Breaking** for 0.0.6 callers: `ScoreMethod` lost `Eq`, sealed `Source::finish` changed; pre-1.0 second number; allocated by pm-assist 2026-11-22 per pm-ants)
 
 - Wrappers and Stage 2 fusion methods: ISR, DBSF, Standardized, CombMAX/MIN/MED/ANZ, RBC, Condorcet, Copeland, MedianRank. Decisions to confirm (ISR formula, MedianRank penalty) are in the PR body.
