@@ -11,8 +11,9 @@ amendments A1-A4, all approved by the PM; they are the spec, do not re-derive th
 - Branch `patent-sweep` (worktree `C:\Projects\sortant-wt-patent`), no PR yet; one PR per day, next window 2026-11-27.
 - Patent sweep (row 6) partial: `docs/PATENT-SWEEP.md`; US7188106B2 wants a second reader. Never "clear".
 - Open decisions awaiting PM objection: ISR keeps `1/sqrt(k+pos)`; MedianRank penalty `longest+1`; DBSF/Standardized constant list at std <= 1e-9; two `Ranked::contributions` mutants time out.
-- Not yet read: advisory `portfolio` job result at the new pin (read by check name; disposition any new Medium).
-- No WAIT lines.
+- Still to read: advisory `portfolio` job result at the new pin (check name on the next PR; disposition any new Medium).
+- WAIT second patent source (board item, CireSnave via PM): needs a human at Espacenet/USPTO or an approved key; FPO/Espacenet/Justia 403 (see `docs/PATENT-SWEEP.md`).
+- PR for `patent-sweep` (slice 1 `6cc59b6` + blocker note) holds for the 2026-11-27 PR window; open it then, [READY] to pm-assist cc pm-ants.
 
 ## Next (in order)
 1. Patent sweep: unread hits, a second source (USPTO/Espacenet), close row 6.
