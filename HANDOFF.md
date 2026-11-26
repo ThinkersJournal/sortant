@@ -13,14 +13,15 @@ amendments A1-A4, all approved by the PM; they are the spec, do not re-derive th
 - Open decisions awaiting PM objection: ISR keeps `1/sqrt(k+pos)`; MedianRank penalty `longest+1`; DBSF/Standardized constant list at std <= 1e-9; two `Ranked::contributions` mutants time out.
 - Still to read: advisory `portfolio` job result at the new pin (check name on the next PR; disposition any new Medium).
 - Second patent source deferred (board 511; pm-ants [FIX] 2026-11-26): continue on Google Patents alone, every verdict says "single source: Google Patents", never "clear". Remaining: classic-name queries (item 3), second reader for US7188106B2.
-- PR for `patent-sweep` (slice 1 `6cc59b6` + blocker note) holds for the 2026-11-27 PR window; open it then, [READY] to pm-assist cc pm-ants.
+- Branch `patent-sweep` head `df5d7b2` (pushed, no PR): slices = patents read (US12259913, US2025/0094398A1, US5864845A, US10698908B2 dependents), classic-name queries (US6728704B2, US7716202B2 and EP1631901A2 marked needs more, US7962500B2), README quick start + `examples/fuse_options.rs`. All verdicts say single source: Google Patents. The gate opens the PR window; open the PR then (title says patent sweep + docs, single-source label), [READY] to pm-assist cc pm-ants.
 
 WAIT: pr-window | check: test "$(date -u +%F)" \> 2026-11-26 | wake: 2026-11-27T00:05:00Z
 
 ## Next (in order)
-1. Patent sweep: unread hits, a second source (USPTO/Espacenet), close row 6.
-2. Row 5: docs/examples passing the ease gate; extra wrappers only if wanted.
-3. Re-run `cargo mutants --file src/fuse.rs` after any `fuse.rs` change.
+1. Open the PR at the window (WAIT above).
+2. Row 5 remainder: rustdoc example per method; wrappers for the rest only if wanted.
+3. Patent sweep: second reader for US7188106B2, US7716202B2, EP1631901A2; second source only if CireSnave picks one (board 511).
+4. Re-run `cargo mutants --file src/fuse.rs` after any `fuse.rs` change.
 
 ## Decisions (contract note, all PM-approved; detail in `docs/CONTRACT.md`)
 D1 one `fuse` entry + logic-free wrappers. D2 zero deps, forbid unsafe. D3 id is `Clone+Eq+Hash`, never orders. D4 `Ranked` vs
