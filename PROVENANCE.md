@@ -33,13 +33,13 @@ defects included) until each method is ported under `docs/CONTRACT.md` (step 4).
 
 | SortAnt file | Origin in rankops 0.3.0 | Change made |
 |---|---|---|
-| `src/lib.rs` | `src/lib.rs` lines 1-3346 (fusion, normalisers, configs, explain) | crate renamed; rerank/metrics/pipeline/adapt/diagnostics/trec/dp_topk modules, metrics prelude, serde derives and an unverified OpenSearch benchmark claim dropped; `forbid(unsafe_code)`; rustfmt; two clippy `collapsible_if` rewrites |
-| `src/fusion_order.rs` | `src/fusion_order.rs` | crate renamed; rustfmt; clippy `collapsible_if` where flagged |
-| `src/validate.rs` | `src/validate.rs` | crate renamed; rustfmt; clippy `collapsible_if` where flagged |
-| `src/proptests.rs` | `src/proptests.rs` | crate renamed; rustfmt; clippy `collapsible_if` where flagged |
-| `src/tests.rs` | `src/lib.rs` `mod tests`, lines 4098-5537 | moved to its own file; 76 fusion tests kept; the 25 MMR, cosine, NDCG, precision, MAP, hit-rate, metric-dispatch tests and the `make_qrels` helper dropped with the code they test; rustfmt |
+| `src/lib.rs` | `src/lib.rs` lines 1-3346 (fusion, normalisers, configs, explain) | crate renamed; rerank/metrics/pipeline/adapt/diagnostics/trec/dp_topk modules, metrics prelude, serde derives and an unverified OpenSearch benchmark claim dropped; `forbid(unsafe_code)`; rustfmt; two clippy `collapsible_if` rewrites **Removed in the old-API removal change (old f32 API retired); the carried copy is in git history at `37189d0`.** |
+| `src/fusion_order.rs` | `src/fusion_order.rs` | crate renamed; rustfmt; clippy `collapsible_if` where flagged **Removed in the old-API removal change (old f32 API retired); the carried copy is in git history at `37189d0`.** |
+| `src/validate.rs` | `src/validate.rs` | crate renamed; rustfmt; clippy `collapsible_if` where flagged **Removed in the old-API removal change (old f32 API retired); the carried copy is in git history at `37189d0`.** |
+| `src/proptests.rs` | `src/proptests.rs` | crate renamed; rustfmt; clippy `collapsible_if` where flagged **Removed in the old-API removal change (old f32 API retired); the carried copy is in git history at `37189d0`.** |
+| `src/tests.rs` | `src/lib.rs` `mod tests`, lines 4098-5537 | moved to its own file; 76 fusion tests kept; the 25 MMR, cosine, NDCG, precision, MAP, hit-rate, metric-dispatch tests and the `make_qrels` helper dropped with the code they test; rustfmt **Removed in the old-API removal change (old f32 API retired); the carried copy is in git history at `37189d0`.** |
 | `src/pairwise.rs` | `src/lib.rs` `condorcet_multi`, `copeland_multi`, `median_rank_multi` (lines 3100-3340 in the carried copy) | reimplemented, not copied: same pairwise rules and median-rank penalty (`longest list + 1`, 0-indexed), but f64, first-appearance order instead of `HashSet` order, per-list weights (D13), no `i32`/`f32` counters; checked against rankops by `tests/differential.rs` |
-| `tests/dbsf_order.rs` | `tests/bughunt_dbsf_knapsack.rs` (the `dbsf` test and `pos` helper) | crate path renamed; the `dp_knapsack` tests dropped |
+| `tests/dbsf_order.rs` | `tests/bughunt_dbsf_knapsack.rs` (the `dbsf` test and `pos` helper) | crate path renamed; the `dp_knapsack` tests dropped **Removed in the old-API removal change (old f32 API retired); the carried copy is in git history at `37189d0`.** |
 
 ### Files written new for SortAnt that follow rankops' rules
 
