@@ -10,6 +10,20 @@ tested against rankops 0.3.0 where its behaviour is correct (dev-dependency only
 `docs/CONTRACT.md`; remaining work is in `ROADMAP.md`. The code began as a fork of rankops 0.3.0 and was rewritten method by
 method; the old f32 API is gone.
 
+**Quick start.** Two ranked lists, three lines (`examples/fuse_two_lists.rs`):
+
+```rust
+use sortant::fuse::{Ranked, rrf};
+
+let keyword = Ranked::new(vec!["doc1", "doc2", "doc3"]);
+let dense = Ranked::new(vec!["doc2", "doc4", "doc1"]);
+let fused = rrf(&keyword, &dense).unwrap(); // fused.items: (id, score), best first
+```
+
+More than two lists, weights, a veto, a cut-off, or scored lists on different scales: `fuse(&lists, &method, &Options::new()...)`;
+see `examples/fuse_options.rs` (`cargo run --example fuse_options`). Ids need only be `Clone + Eq + Hash`; bad input is a typed
+`FuseError`, never a panic.
+
 **Origin and credit.** See `NOTICE` and `PROVENANCE.md` for the pinned upstream, the per-file derivation table and
 what was changed.
 
