@@ -9,7 +9,7 @@ amendments A1-A4, all approved by the PM; they are the spec, do not re-derive th
 ## State (2026-11-26; cluster PM = pm-ants; [READY] goes to pm-assist cc pm-ants)
 - main = `d349dff` (#8 merged: old f32 API removed, patent sweep partial, portfolio pin 467fd25). 0.2.0 breaking, not yet published.
 - Branch `patent-sweep` (worktree `C:\Projects\sortant-wt-patent`), no PR yet; one PR per day, next window 2026-11-27.
-- Patent sweep (row 6) partial: `docs/PATENT-SWEEP.md`; US12259913 and US2025/0094398A1 unread; US7188106B2 wants a second reader. Never "clear".
+- Patent sweep (row 6) partial: `docs/PATENT-SWEEP.md`; US7188106B2 wants a second reader. Never "clear".
 - Open decisions awaiting PM objection: ISR keeps `1/sqrt(k+pos)`; MedianRank penalty `longest+1`; DBSF/Standardized constant list at std <= 1e-9; two `Ranked::contributions` mutants time out.
 - Not yet read: advisory `portfolio` job result at the new pin (read by check name; disposition any new Medium).
 - No WAIT lines.

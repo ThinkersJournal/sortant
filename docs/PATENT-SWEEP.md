@@ -1,6 +1,6 @@
-# Patent sweep (ROADMAP row 6): partial, seven hits read, two found later still unread
+# Patent sweep (ROADMAP row 6): partial, nine hits read
 
-Status: **incomplete**. Five patents were found; the independent claims of seven are read below. The Google Patents pages first returned
+Status: **incomplete**. The independent claims of nine hits are read below. The Google Patents pages first returned
 HTTP 503, then served pages whose claims a fetch tool would not reproduce, so the claims came from the PDFs. Nothing here is
 a clearance.
 
@@ -34,18 +34,20 @@ Google's assumption, not a legal conclusion).
 These readings are about shipping the library. A downstream product that builds the claimed e-discovery system and
 uses `Rrf` inside it is a different question and is not assessed here.
 
-## Found by a second round of queries, claims not yet read
+## Second round, read 2026-11-26
 
-Queries: CombMNZ / Borda count / Condorcet rank aggregation in patent text (positive control: it returned US11163780 and
-US7188106, which do contain those words), and hybrid BM25 plus vector search with reciprocal rank fusion. New hits not yet
-read: US12259913 (caching LLM responses with hybrid retrieval and RRF; Google page returned 404 under the `B2` suffix, try
-Justia) and US2025/0094398A1 (unified RDBMS hybrid vector search; an application, not a grant). US12511322 mentions RRF
-only in its description, per the snippet.
+Source: the Google Patents pages (`/patent/<number>/en`), claims section, which served normally this time. Status lines are
+Google's, not a legal conclusion. Queries that found them: see the second-round queries below.
+
+| Patent | Status | Independent claims, as read | RRF appears | Our feature | Reading |
+|---|---|---|---|---|---|
+| US12259913B1 (Inventus Holdings per Google; "Caching LLM responses using hybrid retrieval and RRF") | active per Google | claims 1, 8, 11: a cache-retrieval method or system that vectorises a question into a vector of "greater than or equal to 1024 dimensions" with a text embedding algorithm, runs a hybrid search over a question portion of a cache, filters by metadata, produces a semantic layer set and a lexical layer set, and "applying a reciprocal rank fusion algorithm to compute a combined ranking set" to "provide an identified answer"; claim 8 adds returning the answer only when the combined ranking is above a settable value | every independent claim | `Rrf` | **outside as read**: each claim needs an LLM-answer cache, question embedding of 1024+ dimensions and semantic and lexical layer sets; sortant takes ranked lists or scores and embeds, caches and filters nothing. RRF is one step inside the claimed pipeline. A downstream product that builds that cache is not assessed here |
+| US2025/0094398A1 (Oracle; "Unified RDBMS framework for hybrid vector search") | pending application per Google | claims 1, 16, 17: building a vector table and a text table from documents (plaintext conversion, chunking, embedding, tokenising, document ids), and in claim 16 a type-specific conversion plus vector and text indexes; dependent claims 14-15 combine two result sets by union or intersection of document ids | none: the words "reciprocal" and "fusion" do not occur in the claims | none | **outside as read**: the independent claims are about database storage and indexing, not score or rank fusion. It is an application, so claims may change; recheck if it grants |
 
 ## To do before row 6 can close
-1. Read the independent claims of US12259913 and US2025/0094398A1; ask a second reader to check the US7188106B2 reading;
+1. (Done 2026-11-26: US12259913 and US2025/0094398A1 read, both outside as read.) Ask a second reader to check the US7188106B2 reading;
    check the legal status of US11163780B2 and US7188106B2 on the USPTO. Read the later steps of US5864845A claim 1 and
-   claims 4, 11 and 18 of US10698908B2 for completeness. None of the seven read so far reads on sortant as read.
+   claims 4, 11 and 18 of US10698908B2 for completeness. None of the nine read so far reads on sortant as read.
 2. Run the same queries on a second source (USPTO full text or Espacenet), each with a positive control.
 3. Query the remaining methods by their classic names (CombMNZ, Borda count rank aggregation, Condorcet fusion, Copeland).
 4. Never write "clear"; "outside as read" only, per patent, with the reason.
