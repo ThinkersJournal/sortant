@@ -72,3 +72,18 @@ Queries (web search restricted to Google Patents pages): `"CombMNZ" OR "Borda co
 2. Run the same queries on a second source (USPTO full text or Espacenet), each with a positive control.
 3. (Done 2026-11-26, Google Patents only: classic-name queries run, see the section above; two hits, EP1631901A2 and US7716202B2, are marked "needs more".)
 4. Never write "clear"; "outside as read" only, per patent, with the reason.
+
+## EPO OPS comparison pilot, 2026-11-26: no comparison possible (coverage)
+
+PM task: compare ten already-quoted claim sets against the EPO OPS text. Auth worked (token granted with the vault credentials,
+nothing printed or written). Ten documents asked for the claims endpoint (`published-data/publication/docdb/<CC.NUM.KIND>/claims`):
+US8838606B1, US8713023B1, US10698908B2, US8078606B2, US5864845A, US11163780B2, US7188106B2, US12259913B1, US2025/0094398A1
+(pending application), EP1631901A2. Results: **0 of 10 have OPS claim text.** Nine US documents: HTTP 404
+`CLIENT.InvalidCountryCode` ("unsupported country code ... fulltext"), so OPS serves no US claims at all. EP1631901 (A2, A3, B1 and
+the epodoc form): HTTP 404 `SERVER.EntityNotFound`. Positive control, same token, same minute: EP1000000A1 returned 3469 bytes of
+claims XML; an EP document OPS does not hold (EP3000000A1) returns the same 404 as EP1631901, so the 404 means "no fulltext held".
+No foreign-language document is in the sweep, and no pending-application/grant pair (the Oracle application has not granted), so
+those two requested cases were not available. The question "do reads from different bodies differ" stays unanswered: nothing was
+compared. No earlier verdict is edited. Next: a pilot needs EP/WO documents (OPS fulltext) or a different second source for US text.
+Tool defect found: `tools/patent-claims.py` counts claim blocks, not claims (US8838606B1 printed 1 block); the comparison tool
+`tools/epo-ops-claims.py` (this branch) therefore needs per-claim splitting before a real diff on Google text.
