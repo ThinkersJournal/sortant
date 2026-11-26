@@ -111,3 +111,26 @@ The five rows that carry an expiry date, rechecked against the Google page in on
 (US8838606B1 and US8713023B1: 2033-03-15 to 2034-02-26); US10698908B2 (2037-10-18), US8078606B2 (2023-06-27) and US5864845A
 (2016-06-28) unchanged. The earlier read of the family is not explained (a term adjustment is a guess, not checked). From now on
 each expiry in these tables carries its read date.
+
+## US second source: USPTO ODP own text vs Google (2026-11-26)
+
+Method: `USPTO_ODP_API_KEY` via `with-secret` (one call, 86 API requests, 0 HTTP 429). Patent number to application number by ODP search
+`applicationMetaData.patentNumber`; claims = the last `CLM` document before the Notice of Allowance, plus any examiner's amendment recorded in
+the NOA. Limits found: the ODP claim text is the applicant's amendment listing, so **strikethrough and underline are lost** (deleted words
+appear as live text, e.g. `between` next to `among`); older files are OCR (`fit tingig` for `(i) fitting`); older and some scanned documents
+are image PDFs with no text layer and no OCR tool was available here. So "same" below means same after those artefacts, and anything the
+markup would decide is "unresolved", not "same".
+
+| Patent | Office text used | Result vs Google |
+|---|---|---|
+| US8838606B1 | CLM 2014-03-05 + examiner's amendment in NOA 2014-06-03 (claim 1) | 18 of 18 same; claim 1 matches Google only with the examiner's amendment applied (`among a plurality of rankings, wherein ...`, `or` to `and`); claims 2, 9, 11, 18 show `adapted` struck and `configured` inserted (markup artefact) |
+| US8713023B1 | CLM 2014-02-26, no examiner's amendment | 20 of 20 same; claim 1 typo-level only (OCR `fit tingig`, `calculatin g` vs Google `(i) fitting`, `calculating`) |
+| US8078606B2 | CLM 2011-10-25 (EXIN/NOA are image PDFs, unread) | list renumbered (office 21 claims, Google 17); 17 aligned by text; same except dependency numbers (renumbering) and `weighing` (office) vs `weighting` (Google) in claim 15; office claims 19-21 have no Google counterpart (unresolved) |
+| US10698908B2 | CLM 2019-11-04, NOA has no amendment text | unresolved: office claim 1 carries limbs Google lacks (`digital input data comprising`, scores "associated with ... search terms ... received from a user who executes a ..."); consistent with struck text but not provable from this text; list also renumbered (26 vs 20) |
+| US11163780B2 | CLM 2021-03-01 | unresolved: claim 4 office reads "at least one of, MaxPsg, CombMaxPsg, or PsgPFF", Google claim 4 reads "MaxPsg." (struck or not cannot be seen); claim 1 office has `maximal relevance` and claim 3 `is performed`, Google omits them |
+| US12259913B1 | CLM 2024-09-03 | not compared: this file's claim layout was not parsed |
+| US7188106B2, US7716202B2, US6728704B2, US7962500B2 | image PDFs | no text available (`pdftotext` returns 5-7 bytes; no OCR tool) |
+
+Reading: no difference found that changes any verdict (none touches a limb the "outside" reasons rely on), but 3 of 10 are unresolved and 4 have
+no text, so the second source covers 3 patents fully (US8838606B1, US8713023B1, US8078606B2 apart from its trailing claims). Verdicts stay "single source: Google Patents"
+for the other seven. Next: an OCR tool for the image PDFs, or the issued-patent full text if the PM names a USPTO route that carries it.
