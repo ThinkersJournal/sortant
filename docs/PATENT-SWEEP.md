@@ -44,6 +44,14 @@ Google's, not a legal conclusion. Queries that found them: see the second-round 
 | US12259913B1 (Inventus Holdings per Google; "Caching LLM responses using hybrid retrieval and RRF") | active per Google | claims 1, 8, 11: a cache-retrieval method or system that vectorises a question into a vector of "greater than or equal to 1024 dimensions" with a text embedding algorithm, runs a hybrid search over a question portion of a cache, filters by metadata, produces a semantic layer set and a lexical layer set, and "applying a reciprocal rank fusion algorithm to compute a combined ranking set" to "provide an identified answer"; claim 8 adds returning the answer only when the combined ranking is above a settable value | every independent claim | `Rrf` | **outside as read**: each claim needs an LLM-answer cache, question embedding of 1024+ dimensions and semantic and lexical layer sets; sortant takes ranked lists or scores and embeds, caches and filters nothing. RRF is one step inside the claimed pipeline. A downstream product that builds that cache is not assessed here |
 | US2025/0094398A1 (Oracle; "Unified RDBMS framework for hybrid vector search") | pending application per Google | claims 1, 16, 17: building a vector table and a text table from documents (plaintext conversion, chunking, embedding, tokenising, document ids), and in claim 16 a type-specific conversion plus vector and text indexes; dependent claims 14-15 combine two result sets by union or intersection of document ids | none: the words "reciprocal" and "fusion" do not occur in the claims | none | **outside as read**: the independent claims are about database storage and indexing, not score or rank fusion. It is an application, so claims may change; recheck if it grants |
 
+## Second source attempt, 2026-11-26: blocked
+
+Tried without any key: freepatentsonline.com search (HTTP 403 "forbidden by administrative rules"), Espacenet REST search 
+(HTTP 403; its OPS API needs a registered key, which this lane does not hold), Justia patent page (HTTP 403). USPTO Patent Public 
+Search (`ppubs.uspto.gov`) loads but is a script-driven session app with no documented keyless query endpoint, so it was not driven. 
+No second-source query has run, so the "second source" item below stays open and needs either a person at a browser on 
+Espacenet/USPTO or a key CireSnave approves.
+
 ## To do before row 6 can close
 1. (Done 2026-11-26: US12259913 and US2025/0094398A1 read, both outside as read.) Ask a second reader to check the US7188106B2 reading;
    check the legal status of US11163780B2 and US7188106B2 on the USPTO. Read the later steps of US5864845A claim 1 and
