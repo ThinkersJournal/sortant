@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 (old f32 API removed; **Breaking**; allocation pending at gate)
+## 0.2.0 - 2026-11-26 (old f32 API removed; **Breaking**; allocated by pm-assist)
 
 - Removed the carried-over rankops f32 API at the crate root (`rrf`, `isr`, `combsum`, `FusionMethod`, the `*_multi` and
   `*_with_config` functions, configs, `explain`, `validate` and `prelude`), its derived test files (`src/tests.rs`,
