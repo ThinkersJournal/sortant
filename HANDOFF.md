@@ -12,8 +12,10 @@ amendments A1-A4, all approved by the PM; they are the spec, do not re-derive th
 - Patent sweep (row 6) partial: `docs/PATENT-SWEEP.md`; US7188106B2 wants a second reader. Never "clear".
 - Open decisions awaiting PM objection: ISR keeps `1/sqrt(k+pos)`; MedianRank penalty `longest+1`; DBSF/Standardized constant list at std <= 1e-9; two `Ranked::contributions` mutants time out.
 - Still to read: advisory `portfolio` job result at the new pin (check name on the next PR; disposition any new Medium).
-- WAIT second patent source (board item, CireSnave via PM): needs a human at Espacenet/USPTO or an approved key; FPO/Espacenet/Justia 403 (see `docs/PATENT-SWEEP.md`).
+- Second patent source deferred (board 511; pm-ants [FIX] 2026-11-26): continue on Google Patents alone, every verdict says "single source: Google Patents", never "clear". Remaining: classic-name queries (item 3), second reader for US7188106B2.
 - PR for `patent-sweep` (slice 1 `6cc59b6` + blocker note) holds for the 2026-11-27 PR window; open it then, [READY] to pm-assist cc pm-ants.
+
+WAIT: pr-window | check: test "$(date -u +%F)" \> 2026-11-26 | wake: 2026-11-27T00:05:00Z
 
 ## Next (in order)
 1. Patent sweep: unread hits, a second source (USPTO/Espacenet), close row 6.
