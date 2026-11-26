@@ -134,3 +134,33 @@ markup would decide is "unresolved", not "same".
 Reading: no difference found that changes any verdict (none touches a limb the "outside" reasons rely on), but 3 of 10 are unresolved and 4 have
 no text, so the second source covers 3 patents fully (US8838606B1, US8713023B1, US8078606B2 apart from its trailing claims). Verdicts stay "single source: Google Patents"
 for the other seven. Next: an OCR tool for the image PDFs, or the issued-patent full text if the PM names a USPTO route that carries it.
+
+### Part 2: issued grant text settles the unresolved (2026-11-26)
+
+Source: ODP `/applications/{app}/associated-documents` gives `grantDocumentMetaData.fileLocationURI` (the USPTO's own full-text grant XML,
+product PTGRXML) for 9 of the 10; that is the issued text, so no OCR was needed for them. (Only US12259913B1 also lists an `EGRANT.PDF`; the
+older applications' document lists have none, so the grant XML is the route.) Claims compared per claim with the same normaliser as above
+(case and punctuation ignored; words kept).
+
+| Patent | Claims in grant XML | vs Google |
+|---|---|---|
+| US8838606B1 | 18 | same (spacing/punctuation only in 17) |
+| US8713023B1 | 20 | same |
+| US10698908B2 | 20 | same: the part-1 extra limbs in the 2019-11-04 CLM were struck text; **Google right** |
+| US8078606B2 | 17 | same: claim 15 reads `weighting` in the grant; the CLM's `weighing` was a typo in the amendment listing; **Google right** |
+| US11163780B2 | 15 | same: claim 4 is as Google; the CLM's longer list was struck text; **Google right** |
+| US7188106B2 | 12 | identical |
+| US12259913B1 | 16 | same |
+| US7716202B2 | 18 | same |
+| US7962500B2 | 18 | same |
+| US6728704B2 | not in the dataset (2001 grant) | unresolved, named reason: the only text is the 2001-08-27 CLM image PDF, OCR'd (engine: Windows OCR via `winocr` 0.0.15 on 300 dpi renders from PyMuPDF; an OCR text is a third reading). It is the claims as filed, so it differs from the issued text where the claims were amended (`result list`/`metric` vs Google `subset`/`representative value`) and that proves nothing about Google. Google's text has one visible OCR slip, `avenge` for `average` |
+
+Counts: grant XML vs Google, 9 patents, 154 claims: 154 same after ignoring case and punctuation, 0 word differences. Part 1 (ODP amendment
+listing vs Google): 55 claims compared, one word differing (`weighing`), which the grant shows was the listing's error. Google's claim
+text matched the issued text word for word in all 154 claims, so on this sample the single source was right every time; the risk is not
+text drift but status and expiry (2 of 5 expiries moved on recheck).
+
+OCR tooling (PM-approved location): `pip install --target C:\Projects\.claude-hooks\ocr-libs winocr pymupdf` from PyPI (winocr 0.0.15
+wheel SHA-256 `48ff0a0a2dbcd1f7e84b4fb22575f5d4aba0ec99fdfe07fb0d04254d00826f18`; `pip download` of pymupdf gave a `pymupdf-2.2-cp311-abi3-win_amd64`
+wheel, SHA-256 `c22e081d07d4b5596ca11c4fda6c8a6bd882205cebe956e063796672374a5e76`, while the install itself reported `pymupdf-1.28.2`; the
+installed one is what ran). Scripts and renders ran from the session scratch folder, outside the repo; nothing system-wide.
