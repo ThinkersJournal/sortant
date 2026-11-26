@@ -161,6 +161,8 @@ text matched the issued text word for word in all 154 claims, so on this sample 
 text drift but status and expiry (2 of 5 expiries moved on recheck).
 
 OCR tooling (PM-approved location): `pip install --target C:\Projects\.claude-hooks\ocr-libs winocr pymupdf` from PyPI (winocr 0.0.15
-wheel SHA-256 `48ff0a0a2dbcd1f7e84b4fb22575f5d4aba0ec99fdfe07fb0d04254d00826f18`; `pip download` of pymupdf gave a `pymupdf-2.2-cp311-abi3-win_amd64`
-wheel, SHA-256 `c22e081d07d4b5596ca11c4fda6c8a6bd882205cebe956e063796672374a5e76`, while the install itself reported `pymupdf-1.28.2`; the
-installed one is what ran). Scripts and renders ran from the session scratch folder, outside the repo; nothing system-wide.
+wheel SHA-256 `48ff0a0a2dbcd1f7e84b4fb22575f5d4aba0ec99fdfe07fb0d04254d00826f18`; installed **pymupdf 1.28.2**, wheel cp310-abi3, PyPI JSON
+digest `ebd244918798502d...` (prefix only; uploaded 2026-08-06), checked by pip against the index over TLS only). The `c22e081d...` hash
+recorded earlier belongs to PyPI's latest pymupdf 2.2 (wheel cp311-abi3, uploaded 2026-11-25), the file `pip download` fetched, which was **not**
+installed. PyMuPDF is AGPL-3.0 (commercial dual licence): fine as an internal local reading tool under `.claude-hooks`, never bundled into a
+repository or distributed. Scripts and renders ran from the session scratch folder, outside the repo; nothing system-wide.
