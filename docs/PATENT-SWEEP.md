@@ -87,3 +87,20 @@ those two requested cases were not available. The question "do reads from differ
 compared. No earlier verdict is edited. Next: a pilot needs EP/WO documents (OPS fulltext) or a different second source for US text.
 Tool defect found: `tools/patent-claims.py` counts claim blocks, not claims (US8838606B1 printed 1 block); the comparison tool
 `tools/epo-ops-claims.py` (this branch) therefore needs per-claim splitting before a real diff on Google text.
+
+### US text from the USPTO itself, 2026-11-26: every source answered, none gave text without a key
+
+Order from the PM task, each tried keyless, exact answers:
+1. **Bulk weekly grant XML.** `bulkdata.uspto.gov` no longer resolves (curl error 6). Its replacement `data.uspto.gov` serves a
+   JavaScript app: every file path tried (`/bulkdata/datasets/ptgrxml/2014/ipg140916.zip`, `/ui/datasets/products/files/PTGRXML/2014/...`)
+   returned the same 12258-byte HTML shell with HTTP 200, as did its own script bundle. The API behind it,
+   `api.uspto.gov/api/v1/datasets/products/...`, answers HTTP 401 `{"message":"Unauthorized"}`. No file was downloaded.
+2. **PatentsView.** `api.patentsview.org` and `patentsview.org` answer 301 to `data.uspto.gov/support/transition-guide/patentsview`;
+   `search.patentsview.org` does not resolve. PatentsView now lives behind the same USPTO API, which wants a key.
+3. **Patent Public Search.** `ppubs.uspto.gov/dirsearch-public/patents/US8838606B1`: HTTP 404; the app page loads but is the
+   script-driven session app, not driven.
+Blocker: a USPTO Open Data Portal API key (CireSnave or the PM would have to obtain it; I do not know its terms). Grant dates for the
+first two: US8838606B1 2014-09-16 (Google page, "Application granted"). 0 of 10 US claims compared. Side note: Google's anticipated
+expiry for US8838606B1 reads 2034-02-26 on today's page; the first table above says 2033-03-15 (earlier read); not re-derived.
+Tool fix (portfolio `tools/`): `patent-claims.py` now splits per claim (`claims_from_page`; US8838606B1 = 18 claims, matching the
+page's "Claims (18)"), with `tools/test_patent_claims.py` (4 tests, red first: 4 errors before the change, green after).
