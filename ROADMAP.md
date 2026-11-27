@@ -13,7 +13,7 @@ Statuses: `todo`, `doing`, `blocked`, `done`. A row is `done` only when its PR i
 | 2 | Contract note: options first, then a recommendation | done | Approved by the PM with amendments A1-A4; merge of #3 closes it. |
 | 3 | Strip per the inventory | done | Remove `rerank/*`, SIMD/`unsafe`, MMR, metrics, optimize, trec, dp_topk, pipeline, adapt, diagnostics, pareto, hierarchical. `#![forbid(unsafe_code)]`; zero required dependencies if possible. |
 | 4 | Port in stages with value-asserting tests, property tests with golden cases, a mutation check, and differential tests against rankops 0.3.0 | done | Stage 1 (#6) and Stage 2 (#7) merged; every method in the CONTRACT section 6 table is in `fuse`; the old f32 API is removed on branch `old-api-removal`. |
-| 5 | Our semantics (row 2), docs and examples that pass the ease gate | doing | A stranger fuses two lists in three lines. |
-| 6 | Patent sweep | partial (see docs/PATENT-SWEEP.md; 7 hits read, 2 more found and unread; see the file) | Ideas, queries with a positive control, claims read verbatim, "outside as read", never "clear". |
+| 5 | Our semantics (row 2), docs and examples that pass the ease gate | doing | A stranger fuses two lists in three lines. Done on the `patent-sweep` branch: README quick start, `examples/fuse_two_lists.rs`, `examples/fuse_options.rs`; open: rustdoc examples per method, wrappers for the rest only if wanted. |
+| 6 | Patent sweep | partial (see docs/PATENT-SWEEP.md; 9 hits read, all outside as read; second source still to do) | Ideas, queries with a positive control, claims read verbatim, "outside as read", never "clear". |
 
 Known rankops defects that rows 2 and 4 must decide, not copy: see `HANDOFF.md`.
