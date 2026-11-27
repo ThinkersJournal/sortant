@@ -563,6 +563,20 @@ fn check_weights(weights: Option<&[f64]>, lists: usize) -> Result<Vec<f64>, Fuse
 ///
 /// No list at all is `Ok` with an empty result.
 ///
+/// # Example
+///
+/// Veto removes an item, and `top_k` keeps the best one:
+///
+/// ```
+/// use sortant::fuse::{fuse, Options, RankMethod, Ranked};
+///
+/// let lists = [Ranked::new(vec!["a", "b"]), Ranked::new(vec!["b", "c"])];
+/// let options = Options::new().veto(["b"]).top_k(1);
+/// let fused = fuse(&lists, &RankMethod::Rrf { k: 60.0 }, &options).unwrap();
+/// assert_eq!(fused.items.len(), 1);
+/// assert_eq!(fused.items[0].0, "a");
+/// ```
+///
 /// # Errors
 ///
 /// [`FuseError::NonFiniteScore`], [`FuseError::DuplicateId`], [`FuseError::InvalidWeights`],
@@ -672,6 +686,13 @@ pub fn rrf<I: Clone + Eq + Hash>(a: &Ranked<I>, b: &Ranked<I>) -> Result<Fused<I
 
 /// Fuses two ranked lists with a Borda count. Same as [`fuse`] with [`RankMethod::Borda`] and default [`Options`].
 ///
+/// ```
+/// use sortant::fuse::{borda, Ranked};
+///
+/// let fused = borda(&Ranked::new(vec!["a", "b"]), &Ranked::new(vec!["b", "c"])).unwrap();
+/// assert_eq!(fused.items[0].0, "b");
+/// ```
+///
 /// # Errors
 ///
 /// [`FuseError::DuplicateId`] if an id repeats within one list.
@@ -704,6 +725,14 @@ pub fn weighted<I: Clone + Eq + Hash>(a: &Scored<I>, b: &Scored<I>) -> Result<Fu
 
 /// Fuses two scored lists with CombSUM. Same as [`fuse`] with [`ScoreMethod::CombSum`] and default [`Options`].
 ///
+/// ```
+/// use sortant::fuse::{combsum, Scored};
+///
+/// let a = Scored::new(vec![("a", 3.0), ("b", 2.0), ("c", 1.0)]);
+/// let b = Scored::new(vec![("b", 9.0), ("c", 3.0)]);
+/// assert_eq!(combsum(&a, &b).unwrap().items[0].0, "b");
+/// ```
+///
 /// # Errors
 ///
 /// As [`weighted`].
@@ -716,6 +745,14 @@ pub fn combsum<I: Clone + Eq + Hash>(a: &Scored<I>, b: &Scored<I>) -> Result<Fus
 }
 
 /// Fuses two scored lists with CombMNZ. Same as [`fuse`] with [`ScoreMethod::CombMnz`] and default [`Options`].
+///
+/// ```
+/// use sortant::fuse::{combmnz, Scored};
+///
+/// let a = Scored::new(vec![("a", 3.0), ("b", 2.0), ("c", 1.0)]);
+/// let b = Scored::new(vec![("b", 9.0), ("c", 3.0)]);
+/// assert_eq!(combmnz(&a, &b).unwrap().items[0].0, "b");
+/// ```
 ///
 /// # Errors
 ///
