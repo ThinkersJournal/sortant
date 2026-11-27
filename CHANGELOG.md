@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 - 2026-11-27 (allocated by pm-assist; docs, example and tool only)
+
+- Patent sweep slice 1 (all single-source), README and `examples/fuse_options.rs`, EPO/USPTO second-source tool `tools/epo-ops-claims.py`, ROADMAP and HANDOFF. No `src` change; not breaking.
+
 ## 0.2.0 - 2026-11-26 (old f32 API removed; **Breaking**; allocated by pm-assist)
 
 - Removed the carried-over rankops f32 API at the crate root (`rrf`, `isr`, `combsum`, `FusionMethod`, the `*_multi` and
