@@ -6,7 +6,8 @@ Rank fusion: combine several ranked lists into one decision. Work in progress; n
 typed errors, f64 arithmetic that is bit-identical across platforms, a total tie-break order, no dependencies and no
 `unsafe`. Rank methods: RRF, ISR, RBC, Borda, Condorcet, Copeland, median rank. Score methods: weighted, CombSUM, CombMNZ,
 CombMAX/MIN/MED/ANZ, DBSF, standardised. Two-list wrappers `rrf`, `borda`, `weighted`, `combsum`, `combmnz`. Every method is
-tested against rankops 0.3.0 where its behaviour is correct (dev-dependency only). The decisions are in
+tested against rankops 0.3.0 where its behaviour is correct. That version is pinned (`=0.3.0`, not the latest) on purpose: it is the
+parity-test oracle the code was derived from, a dev-dependency only, never a runtime dependency. The decisions are in
 `docs/CONTRACT.md`; remaining work is in `ROADMAP.md`. The code began as a fork of rankops 0.3.0 and was rewritten method by
 method; the old f32 API is gone.
 

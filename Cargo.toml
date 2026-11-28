@@ -15,6 +15,8 @@ publish = false
 
 [dev-dependencies]
 proptest = "1.9"
+# Parity-test oracle only (tests/differential.rs): sortant derives from rankops 0.3.0 and the differential tests compare
+# against exactly that version. Not a runtime dependency; never shipped to users. Deliberately not the latest (0.5.1).
 rankops = "=0.3.0"
 
 [lints.rust]
