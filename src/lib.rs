@@ -15,6 +15,11 @@
 //! assert_eq!(fused.items[0].0, "d2"); // in both lists
 //! ```
 
+/// Compiles and runs the README's code blocks as doctests, so the README cannot drift from the API.
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+struct ReadmeDoctests;
+
 pub mod error;
 pub mod fuse;
 pub mod input;

@@ -1,18 +1,22 @@
 [package]
 name = "sortant"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2024"
-rust-version = "1.88"
-description = "Planned. The crate name is reserved; there is no API yet."
+rust-version = "1.89"
+description = "Rank fusion: combine ranked or scored lists with RRF, Borda, CombSUM and more. Deterministic, zero dependencies, no unsafe."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/ThinkersJournal/sortant"
 readme = "README.md"
+keywords = ["rank-fusion", "rrf", "search", "ranking", "retrieval"]
+categories = ["algorithms", "science"]
 publish = false
 
 [dependencies]
 
 [dev-dependencies]
 proptest = "1.9"
+# Parity-test oracle only (tests/differential.rs): sortant derives from rankops 0.3.0 and the differential tests compare
+# against exactly that version. Not a runtime dependency; never shipped to users. Deliberately not the latest (0.5.1).
 rankops = "=0.3.0"
 
 [lints.rust]

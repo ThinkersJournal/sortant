@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.3 - 2026-11-27 (allocated by pm-assist; first-release readiness; docs, CI and metadata only; no `src` behaviour change)
+
+- README: inline `fuse` example, method and option names, dependency line; the README's code blocks are now doctests.
+- Cargo.toml: real description, keywords, categories. CI: `msrv` (1.89, library and tests) and `examples run` jobs.
+- MSRV raised 1.88 -> 1.89 (one MSRV for library and tests; the oracle dev-dependency rankops 0.3.0 needs 1.89).
+- `docs/FIRST-RELEASE.md`: readiness checklist and fresh-eyes trial.
+
 ## 0.2.2 - 2026-11-27 (allocated by pm-assist; docs only: rustdoc examples on `fuse`, its wrappers and the 11 Stage 2 methods in `src/fuse.rs`; no behaviour change)
 
 - Rustdoc examples added in `src/fuse.rs` (198 lines, doctests only); the lane reports 100+20 tests and 19 doctests green.
