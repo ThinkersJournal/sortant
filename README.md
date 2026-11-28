@@ -42,7 +42,7 @@ different scales. `Options` setters: `weights`, `veto`, `force`, `top_k`, `tie_b
 `Clone + Eq + Hash`; bad input is a typed `FuseError`, never a panic. Full API: `cargo doc --open`.
 
 **Dependency.** Not yet on crates.io (the name is reserved by a `0.0.0` placeholder): until the first release, depend on it
-with `sortant = { git = "https://github.com/ThinkersJournal/sortant" }`. Minimum Rust version 1.88 (library; its tests need 1.89).
+with `sortant = { git = "https://github.com/ThinkersJournal/sortant" }`. Minimum Rust version 1.89 (library and tests).
 
 **Origin and credit.** See `NOTICE` and `PROVENANCE.md` for the pinned upstream, the per-file derivation table and
 what was changed.

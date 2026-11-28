@@ -8,7 +8,7 @@ Windows 11, 2026-11-28. PASS / GAP (needs a decision) / FIXED (on this branch, n
 |---|---|---|---|
 | 1 | README hello-world compiled in CI | FIXED | `lib.rs` includes the README as a doctest, so its two code blocks run in `cargo test` (21 doctests, was 19); new CI job `examples run` runs both examples |
 | 2 | Fresh-eyes trial (EXPECTATIONS 6.24) | DONE | below |
-| 3 | MSRV stated and tested | FIXED / GAP | `rust-version = 1.88`; new CI job `msrv` runs `cargo check --locked` on 1.88 (library only). Measured: lib builds on 1.88; 1.87 fails (`let` chains, E0658), so 1.88 is the true floor. **The tests need 1.89**: dev-dependency `rankops 0.3.0` (and `innr`) declare 1.89, so `cargo +1.88 check --all-targets` is refused. Decision: keep as is (documented in README and CI), or raise MSRV to 1.89 |
+| 3 | MSRV stated and tested | FIXED (ruled) | One MSRV for library and tests, **1.89** (PM ruling via pm-ants 2026-11-28). Measured before the change: the library alone builds on 1.88 and fails on 1.87 (`let` chains, E0658), but the dev-dependency `rankops 0.3.0` (and `innr`) need 1.89. `rust-version = 1.89`; CI job `msrv (1.89)` runs `cargo test --locked` on exactly 1.89 (also run by hand: 100 + 20 + 21 doctests pass on 1.89) |
 | 4 | Licence files and NOTICE | PASS | `LICENSE-MIT`, `LICENSE-APACHE`, `NOTICE`, `licenses/rankops-LICENSE-MIT` all in `cargo package --list`; `license = "MIT OR Apache-2.0"`. Provenance rows in `PROVENANCE.md` (earlier work) |
 | 5 | Crate metadata | FIXED | `description` was "Planned… no API yet" (stale); now describes the crate. Added `keywords` (rank-fusion, rrf, search, ranking, retrieval) and `categories` (algorithms, science). `readme`, `repository`, `license`, `edition` present. Not set: `homepage`, `documentation` (docs.rs default) |
 | 6 | No path or git dependencies | PASS | `[dependencies]` empty; dev-deps `proptest 1.9`, `rankops =0.3.0`, both crates.io; `deny.toml` denies unknown registries and git |
@@ -16,7 +16,7 @@ Windows 11, 2026-11-28. PASS / GAP (needs a decision) / FIXED (on this branch, n
 | 8 | Packaging | PASS | `cargo package --locked` (with `publish` flipped locally, not committed) packaged 34 files, 63.5 KiB compressed, and verified the build. It also ships `HANDOFF.md`, `ROADMAP.md`, `tools/`, `.github/` (no `exclude` set; a call) |
 | 9 | cargo-deny | PASS | `cargo deny check`: advisories, bans, licences, sources ok (one warning: unused `Zlib` allowance) |
 | 10 | Yank policy | FIXED (proposal) | none existed. Proposed: yank a version only for a build failure, a soundness bug, or a wrong result (a result the contract in `docs/CONTRACT.md` forbids); never for style, MSRV or docs; every yank gets a CHANGELOG line and a fixed release. Needs PM approval |
-| 11 | Version | GAP | sortant is `0.2.2` and crates.io holds `0.0.0`; the PM decides the first published number |
+| 11 | Version | PASS (ruled) | `0.2.2` as on `main` is fine for the first release (PM ruling via pm-ants 2026-11-28). The MSRV raise is in the CHANGELOG "Unreleased" entry; the PM allocates the final number |
 | 12 | Patent sweep | GAP (not this task) | `docs/PATENT-SWEEP.md`: every verdict single source; three patents want a second reader. Whether it gates publish is the PM's call |
 
 ## Fresh-eyes trial (item 2)

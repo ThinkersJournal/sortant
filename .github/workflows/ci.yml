@@ -50,15 +50,15 @@ jobs:
       - run: cargo test --all-features --no-fail-fast
 
   msrv:
-    name: msrv (1.88, library only)
+    name: msrv (1.89)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # 1.88
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # 1.89
         with:
-          toolchain: "1.88"
-      # Library only: the dev-dependency rankops 0.3.0 needs rustc 1.89, so tests do not build on 1.88.
-      - run: cargo check --locked
+          toolchain: "1.89"
+      # One MSRV for library and tests: the dev-dependency rankops 0.3.0 needs rustc 1.89.
+      - run: cargo test --locked
 
   examples:
     name: examples run
