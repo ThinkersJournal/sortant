@@ -3,10 +3,12 @@ name = "sortant"
 version = "0.2.2"
 edition = "2024"
 rust-version = "1.88"
-description = "Planned. The crate name is reserved; there is no API yet."
+description = "Rank fusion: combine ranked or scored lists with RRF, Borda, CombSUM and more. Deterministic, zero dependencies, no unsafe."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/ThinkersJournal/sortant"
 readme = "README.md"
+keywords = ["rank-fusion", "rrf", "search", "ranking", "retrieval"]
+categories = ["algorithms", "science"]
 publish = false
 
 [dependencies]

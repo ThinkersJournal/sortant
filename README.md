@@ -20,9 +20,28 @@ let dense = Ranked::new(vec!["doc2", "doc4", "doc1"]);
 let fused = rrf(&keyword, &dense).unwrap(); // fused.items: (id, score), best first
 ```
 
-More than two lists, weights, a veto, a cut-off, or scored lists on different scales: `fuse(&lists, &method, &Options::new()...)`;
-see `examples/fuse_options.rs` (`cargo run --example fuse_options`). Ids need only be `Clone + Eq + Hash`; bad input is a typed
-`FuseError`, never a panic.
+`rrf` is reciprocal rank fusion with `k = 60`. For more than two lists, weights, a veto, a cut-off or other methods, use
+`fuse(&lists, &method, &options)` (`examples/fuse_options.rs`, run with `cargo run --example fuse_options`):
+
+```rust
+use sortant::fuse::{Options, RankMethod, Ranked, fuse};
+
+let lists = [
+    Ranked::new(vec!["a", "b", "c"]),
+    Ranked::new(vec!["b", "a", "d"]),
+    Ranked::new(vec!["c", "a", "e"]),
+];
+// One weight per list, in list order (a wrong count is an error); a vetoed id is dropped from the output.
+let options = Options::new().weights(vec![2.0, 1.0, 1.0]).veto(["b"]);
+let fused = fuse(&lists, &RankMethod::Rrf { k: 60.0 }, &options).unwrap();
+```
+
+Rank methods (`RankMethod`) take `Ranked` lists; score methods (`ScoreMethod`) take `Scored` lists of `(id, f64)` and normalise
+different scales. `Options` setters: `weights`, `veto`, `force`, `top_k`, `tie_break_ranker`, `tie_break_by`. Ids need only be
+`Clone + Eq + Hash`; bad input is a typed `FuseError`, never a panic. Full API: `cargo doc --open`.
+
+**Dependency.** Not yet on crates.io (the name is reserved by a `0.0.0` placeholder): until the first release, depend on it
+with `sortant = { git = "https://github.com/ThinkersJournal/sortant" }`. Minimum Rust version 1.88 (library; its tests need 1.89).
 
 **Origin and credit.** See `NOTICE` and `PROVENANCE.md` for the pinned upstream, the per-file derivation table and
 what was changed.
