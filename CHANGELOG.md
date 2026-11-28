@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2 - 2026-11-27 (allocated by pm-assist; docs only: rustdoc examples on `fuse`, its wrappers and the 11 Stage 2 methods in `src/fuse.rs`; no behaviour change)
+
+- Rustdoc examples added in `src/fuse.rs` (198 lines, doctests only); the lane reports 100+20 tests and 19 doctests green.
+
 ## 0.2.1 - 2026-11-27 (allocated by pm-assist; docs, example and tool only)
 
 - Patent sweep slice 1 (all single-source), README and `examples/fuse_options.rs`, EPO/USPTO second-source tool `tools/epo-ops-claims.py`, ROADMAP and HANDOFF. No `src` change; not breaking.
