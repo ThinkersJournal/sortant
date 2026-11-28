@@ -120,6 +120,20 @@ pub enum RankMethod {
     /// rankops 0.3.0 uses; it is not the inverse-square-rank of Mourao et al. `k` must be finite and `> 0`
     /// ([`FuseError::InvalidConfig`] otherwise), which also keeps `pos = 0` from dividing by zero. Uses only `sqrt`,
     /// which IEEE-754 rounds exactly (contract D14).
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// use sortant::fuse::{fuse, Options, RankMethod, Ranked};
+    ///
+    /// let lists = [
+    ///     Ranked::new(vec!["a", "b"]),
+    ///     Ranked::new(vec!["b", "c"]),
+    /// ];
+    /// let fused = fuse(&lists, &RankMethod::Isr { k: 1.0 }, &Options::new()).unwrap();
+    /// let ids: Vec<_> = fused.items.iter().map(|(id, _)| *id).collect();
+    /// assert_eq!(ids, ["b", "a", "c"]);
+    /// ```
     Isr {
         /// The smoothing constant.
         k: f64,
@@ -128,6 +142,20 @@ pub enum RankMethod {
     /// must be strictly between 0 and 1 ([`FuseError::InvalidConfig`] otherwise). `p^pos` is built by repeated
     /// multiplication along the list (`w_0 = 1`, `w_{pos+1} = w_pos * p`), never `powf`/`powi`, so the result is
     /// bit-identical on every platform (contract D14, amendment A4); the contribution is `weight * (w_pos * (1 - p))`.
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// use sortant::fuse::{fuse, Options, RankMethod, Ranked};
+    ///
+    /// let lists = [
+    ///     Ranked::new(vec!["a", "b"]),
+    ///     Ranked::new(vec!["b", "c"]),
+    /// ];
+    /// let fused = fuse(&lists, &RankMethod::Rbc { persistence: 0.5 }, &Options::new()).unwrap();
+    /// let ids: Vec<_> = fused.items.iter().map(|(id, _)| *id).collect();
+    /// assert_eq!(ids, ["b", "a", "c"]);
+    /// ```
     Rbc {
         /// The persistence `p`.
         persistence: f64,
@@ -135,13 +163,59 @@ pub enum RankMethod {
     /// Condorcet (simplified, not Kemeny optimal): an item's score is the number of other items it beats, where it
     /// beats another when the lists preferring it carry more than half of the total weight. A list prefers the better
     /// position, and an item present in a list beats one absent from it. Unit weights: a strict majority of all lists.
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// use sortant::fuse::{fuse, Options, RankMethod, Ranked};
+    ///
+    /// let lists = [
+    ///     Ranked::new(vec!["a", "b", "c"]),
+    ///     Ranked::new(vec!["a", "c", "b"]),
+    ///     Ranked::new(vec!["b", "a", "c"]),
+    /// ];
+    /// let fused = fuse(&lists, &RankMethod::Condorcet, &Options::new()).unwrap();
+    /// let ids: Vec<_> = fused.items.iter().map(|(id, _)| *id).collect();
+    /// assert_eq!(ids, ["a", "b", "c"]);
+    /// assert_eq!(fused.items[0].1, 2.0);
+    /// ```
     Condorcet,
     /// Copeland: pairwise wins minus pairwise losses, the heavier side of each pair deciding (equal weight is a tie).
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// use sortant::fuse::{fuse, Options, RankMethod, Ranked};
+    ///
+    /// let lists = [
+    ///     Ranked::new(vec!["a", "b", "c"]),
+    ///     Ranked::new(vec!["a", "c", "b"]),
+    ///     Ranked::new(vec!["b", "a", "c"]),
+    /// ];
+    /// let fused = fuse(&lists, &RankMethod::Copeland, &Options::new()).unwrap();
+    /// let ids: Vec<_> = fused.items.iter().map(|(id, _)| *id).collect();
+    /// assert_eq!(ids, ["a", "b", "c"]);
+    /// ```
     Copeland,
     /// Median rank: the weighted median of an item's 0-indexed positions, a list without the item counting as position
     /// `(longest list length) + 1`, scored as `1 / (1 + median)`. With unit weights an even count takes the mean of the
     /// two middle positions. rankops' doc said `max_rank + 1` while its code used
     /// `length + 1` in 0-indexed positions; SortAnt states and keeps the code's rule.
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// use sortant::fuse::{fuse, Options, RankMethod, Ranked};
+    ///
+    /// let lists = [
+    ///     Ranked::new(vec!["a", "b", "c"]),
+    ///     Ranked::new(vec!["a", "c", "b"]),
+    ///     Ranked::new(vec!["b", "a", "c"]),
+    /// ];
+    /// let fused = fuse(&lists, &RankMethod::MedianRank, &Options::new()).unwrap();
+    /// let ids: Vec<_> = fused.items.iter().map(|(id, _)| *id).collect();
+    /// assert_eq!(ids, ["a", "b", "c"]);
+    /// ```
     MedianRank,
 }
 
@@ -160,11 +234,39 @@ pub enum ScoreMethod {
     /// Distribution-based score fusion: each list is normalised by its own mean and population standard deviation
     /// (`z = (s - mean) / std` clamped to `[-3, 3]`, then `z / 6 + 0.5`; see [`crate::norm::dbsf`]) instead of
     /// min-max, then summed with the weights as given. A list with `std <= 1e-9` normalises to 0.5.
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// use sortant::fuse::{fuse, Options, ScoreMethod, Scored};
+    ///
+    /// let lists = [
+    ///     Scored::new(vec![("a", 3.0), ("b", 2.0), ("c", 1.0)]),
+    ///     Scored::new(vec![("b", 9.0), ("c", 3.0)]),
+    /// ];
+    /// let fused = fuse(&lists, &ScoreMethod::Dbsf, &Options::new()).unwrap();
+    /// let ids: Vec<_> = fused.items.iter().map(|(id, _)| *id).collect();
+    /// assert_eq!(ids, ["b", "a", "c"]);
+    /// ```
     Dbsf,
     /// Standardised score fusion: each list becomes z-scores (mean, population standard deviation) clamped to
     /// `[clip_min, clip_max]`, summed with the weights as given. Absent items add 0, which is a mid-range z-score;
     /// a constant list (`std <= 1e-9`) gives 0 for every item. `clip_min` must be finite and `<= clip_max`, which must
     /// be finite ([`FuseError::InvalidConfig`] names the offending parameter); this fixes rankops' `clamp` panic.
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// use sortant::fuse::{fuse, Options, ScoreMethod, Scored};
+    ///
+    /// let lists = [
+    ///     Scored::new(vec![("a", 3.0), ("b", 2.0), ("c", 1.0)]),
+    ///     Scored::new(vec![("b", 9.0), ("c", 3.0)]),
+    /// ];
+    /// let fused = fuse(&lists, &ScoreMethod::Standardized { clip_min: -3.0, clip_max: 3.0 }, &Options::new()).unwrap();
+    /// let ids: Vec<_> = fused.items.iter().map(|(id, _)| *id).collect();
+    /// assert_eq!(ids, ["a", "b", "c"]);
+    /// ```
     Standardized {
         /// Lower clip bound.
         clip_min: f64,
@@ -173,14 +275,73 @@ pub enum ScoreMethod {
     },
     /// Highest score an item has in any list that contains it. Raw scores, no normalisation (as in rankops), each
     /// multiplied by its list's weight.
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// use sortant::fuse::{fuse, Options, ScoreMethod, Scored};
+    ///
+    /// let lists = [
+    ///     Scored::new(vec![("a", 3.0), ("b", 2.0)]),
+    ///     Scored::new(vec![("b", 5.0), ("c", 1.0)]),
+    /// ];
+    /// let fused = fuse(&lists, &ScoreMethod::CombMax, &Options::new()).unwrap();
+    /// let ids: Vec<_> = fused.items.iter().map(|(id, _)| *id).collect();
+    /// assert_eq!(ids, ["b", "a", "c"]);
+    /// assert_eq!(fused.items[0].1, 5.0);
+    /// ```
     CombMax,
     /// Lowest score an item has in any list that contains it. Raw scores times the list weight.
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// use sortant::fuse::{fuse, Options, ScoreMethod, Scored};
+    ///
+    /// let lists = [
+    ///     Scored::new(vec![("a", 3.0), ("b", 2.0)]),
+    ///     Scored::new(vec![("b", 5.0), ("c", 1.0)]),
+    /// ];
+    /// let fused = fuse(&lists, &ScoreMethod::CombMin, &Options::new()).unwrap();
+    /// let ids: Vec<_> = fused.items.iter().map(|(id, _)| *id).collect();
+    /// assert_eq!(ids, ["a", "b", "c"]);
+    /// ```
     CombMin,
     /// Median of an item's scores over the lists that contain it; an even count takes the midpoint of the two middle
     /// values. Raw scores times the list weight.
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// use sortant::fuse::{fuse, Options, ScoreMethod, Scored};
+    ///
+    /// let lists = [
+    ///     Scored::new(vec![("a", 3.0), ("b", 2.0)]),
+    ///     Scored::new(vec![("b", 5.0), ("c", 1.0)]),
+    /// ];
+    /// let fused = fuse(&lists, &ScoreMethod::CombMed, &Options::new()).unwrap();
+    /// let ids: Vec<_> = fused.items.iter().map(|(id, _)| *id).collect();
+    /// assert_eq!(ids, ["b", "a", "c"]);
+    /// assert_eq!(fused.items[0].1, 3.5);
+    /// ```
     CombMed,
     /// Mean of an item's non-zero scores over the lists that contain it (the published CombANZ; rankops averages all
     /// present scores, contract section 6). An item whose scores are all zero gets 0. Raw scores times the list weight.
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// use sortant::fuse::{fuse, Options, ScoreMethod, Scored};
+    ///
+    /// let lists = [
+    ///     Scored::new(vec![("a", 3.0), ("b", 0.0)]),
+    ///     Scored::new(vec![("b", 4.0), ("c", 1.0)]),
+    /// ];
+    /// let fused = fuse(&lists, &ScoreMethod::CombAnz, &Options::new()).unwrap();
+    /// let ids: Vec<_> = fused.items.iter().map(|(id, _)| *id).collect();
+    /// assert_eq!(ids, ["b", "a", "c"]);
+    /// assert_eq!(fused.items[0].1, 4.0);
+    /// ```
     CombAnz,
 }
 
@@ -563,6 +724,20 @@ fn check_weights(weights: Option<&[f64]>, lists: usize) -> Result<Vec<f64>, Fuse
 ///
 /// No list at all is `Ok` with an empty result.
 ///
+/// # Example
+///
+/// Veto removes an item, and `top_k` keeps the best one:
+///
+/// ```
+/// use sortant::fuse::{fuse, Options, RankMethod, Ranked};
+///
+/// let lists = [Ranked::new(vec!["a", "b"]), Ranked::new(vec!["b", "c"])];
+/// let options = Options::new().veto(["b"]).top_k(1);
+/// let fused = fuse(&lists, &RankMethod::Rrf { k: 60.0 }, &options).unwrap();
+/// assert_eq!(fused.items.len(), 1);
+/// assert_eq!(fused.items[0].0, "a");
+/// ```
+///
 /// # Errors
 ///
 /// [`FuseError::NonFiniteScore`], [`FuseError::DuplicateId`], [`FuseError::InvalidWeights`],
@@ -672,6 +847,13 @@ pub fn rrf<I: Clone + Eq + Hash>(a: &Ranked<I>, b: &Ranked<I>) -> Result<Fused<I
 
 /// Fuses two ranked lists with a Borda count. Same as [`fuse`] with [`RankMethod::Borda`] and default [`Options`].
 ///
+/// ```
+/// use sortant::fuse::{borda, Ranked};
+///
+/// let fused = borda(&Ranked::new(vec!["a", "b"]), &Ranked::new(vec!["b", "c"])).unwrap();
+/// assert_eq!(fused.items[0].0, "b");
+/// ```
+///
 /// # Errors
 ///
 /// [`FuseError::DuplicateId`] if an id repeats within one list.
@@ -704,6 +886,14 @@ pub fn weighted<I: Clone + Eq + Hash>(a: &Scored<I>, b: &Scored<I>) -> Result<Fu
 
 /// Fuses two scored lists with CombSUM. Same as [`fuse`] with [`ScoreMethod::CombSum`] and default [`Options`].
 ///
+/// ```
+/// use sortant::fuse::{combsum, Scored};
+///
+/// let a = Scored::new(vec![("a", 3.0), ("b", 2.0), ("c", 1.0)]);
+/// let b = Scored::new(vec![("b", 9.0), ("c", 3.0)]);
+/// assert_eq!(combsum(&a, &b).unwrap().items[0].0, "b");
+/// ```
+///
 /// # Errors
 ///
 /// As [`weighted`].
@@ -716,6 +906,14 @@ pub fn combsum<I: Clone + Eq + Hash>(a: &Scored<I>, b: &Scored<I>) -> Result<Fus
 }
 
 /// Fuses two scored lists with CombMNZ. Same as [`fuse`] with [`ScoreMethod::CombMnz`] and default [`Options`].
+///
+/// ```
+/// use sortant::fuse::{combmnz, Scored};
+///
+/// let a = Scored::new(vec![("a", 3.0), ("b", 2.0), ("c", 1.0)]);
+/// let b = Scored::new(vec![("b", 9.0), ("c", 3.0)]);
+/// assert_eq!(combmnz(&a, &b).unwrap().items[0].0, "b");
+/// ```
 ///
 /// # Errors
 ///
