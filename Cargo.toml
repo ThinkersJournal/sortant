@@ -1,6 +1,6 @@
 [package]
 name = "sortant"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2024"
 rust-version = "1.89"
 description = "Rank fusion: combine ranked or scored lists with RRF, Borda, CombSUM and more. Deterministic, zero dependencies, no unsafe."

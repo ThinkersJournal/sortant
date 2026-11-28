@@ -1,9 +1,9 @@
 # Changelog
 
-## Unreleased (first-release readiness; docs, CI and metadata only; no `src` behaviour change)
+## 0.2.3 - 2026-11-27 (allocated by pm-assist; first-release readiness; docs, CI and metadata only; no `src` behaviour change)
 
 - README: inline `fuse` example, method and option names, dependency line; the README's code blocks are now doctests.
-- Cargo.toml: real description, keywords, categories. CI: `msrv` (1.88, library) and `examples run` jobs.
+- Cargo.toml: real description, keywords, categories. CI: `msrv` (1.89, library and tests) and `examples run` jobs.
 - MSRV raised 1.88 -> 1.89 (one MSRV for library and tests; the oracle dev-dependency rankops 0.3.0 needs 1.89).
 - `docs/FIRST-RELEASE.md`: readiness checklist and fresh-eyes trial.
 
